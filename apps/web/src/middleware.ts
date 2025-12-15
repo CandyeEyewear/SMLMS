@@ -43,6 +43,12 @@ export async function middleware(request: NextRequest) {
 
   const path = request.nextUrl.pathname;
 
+  // API routes should not be redirected to HTML pages.
+  // Let individual route handlers return JSON (e.g. 401) instead.
+  if (path.startsWith('/api')) {
+    return supabaseResponse;
+  }
+
   // Public routes - anyone can access
   // Note: auth callback + password setup must be public, otherwise invite links
   // get redirected to /login before the client callback can set the session.
