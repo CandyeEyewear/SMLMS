@@ -1,0 +1,152 @@
+@import "tailwindcss";
+
+/* ============================================
+   SM LMS Platform - Design System
+   ============================================ */
+
+:root {
+  /* Primary - Deep Blue */
+  --color-primary-50: #E8EDF5;
+  --color-primary-100: #C5D3E8;
+  --color-primary-200: #9FB5D9;
+  --color-primary-300: #7897CA;
+  --color-primary-400: #5179BB;
+  --color-primary-500: #1A4490;
+  --color-primary-600: #163A7A;
+  --color-primary-700: #123064;
+  --color-primary-800: #0E264E;
+  --color-primary-900: #0A1C38;
+  --color-primary: #1A4490;
+
+  /* Accent - Teal */
+  --color-accent-50: #E6F7F9;
+  --color-accent-100: #C0EBEF;
+  --color-accent-200: #99DFE5;
+  --color-accent-300: #73D3DB;
+  --color-accent-400: #4CC7D1;
+  --color-accent-500: #2BB5C5;
+  --color-accent-600: #24969F;
+  --color-accent-700: #1D7779;
+  --color-accent-800: #165853;
+  --color-accent-900: #0F392D;
+  --color-accent: #2BB5C5;
+
+  /* Neutral - Warm Gray */
+  --color-neutral-50: #FAFAF9;
+  --color-neutral-100: #F5F4F2;
+  --color-neutral-200: #ECEAE6;
+  --color-neutral-300: #E0DDD8;
+  --color-neutral-400: #D2CEC7;
+  --color-neutral-500: #C4BEB5;
+  --color-neutral-600: #A8A299;
+  --color-neutral-700: #8C867D;
+  --color-neutral-800: #706A61;
+  --color-neutral-900: #544E45;
+
+  /* Semantic Colors */
+  --color-success: #10B981;
+  --color-success-light: #D1FAE5;
+  --color-warning: #F59E0B;
+  --color-warning-light: #FEF3C7;
+
+  /* 3D Transform Utilities */
+  --perspective-1000: perspective(1000px);
+  --transform-style-preserve-3d: transform-style: preserve-3d;
+  --backface-hidden: backface-visibility: hidden;
+  --rotate-y-180: rotateY(180deg);
+  --color-error: #EF4444;
+  --color-error-light: #FEE2E2;
+  --color-info: #3B82F6;
+  --color-info-light: #DBEAFE;
+
+  /* Surfaces */
+  --color-background: #FFFFFF;
+  --color-surface: #F9FAFB;
+  --color-border: #E5E7EB;
+
+  /* Text */
+  --color-text-primary: #111827;
+  --color-text-secondary: #6B7280;
+  --color-text-muted: #9CA3AF;
+  --color-text-inverse: #FFFFFF;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.04);
+}
+
+/* Tailwind CSS 4 Theme */
+@theme inline {
+  /* Primary Scale */
+  --color-primary-50: #E8EDF5;
+  --color-primary-100: #C5D3E8;
+  --color-primary-200: #9FB5D9;
+  --color-primary-300: #7897CA;
+  --color-primary-400: #5179BB;
+  --color-primary-500: #1A4490;
+  --color-primary-600: #163A7A;
+  --color-primary-700: #123064;
+  --color-primary-800: #0E264E;
+  --color-primary-900: #0A1C38;
+
+  /* Accent Scale */
+  --color-accent-50: #E6F7F9;
+  --color-accent-100: #C0EBEF;
+  --color-accent-200: #99DFE5;
+  --color-accent-300: #73D3DB;
+  --color-accent-400: #4CC7D1;
+  --color-accent-500: #2BB5C5;
+  --color-accent-600: #24969F;
+  --color-accent-700: #1D7779;
+  --color-accent-800: #165853;
+  --color-accent-900: #0F392D;
+
+  /* Semantic */
+  --color-success: #10B981;
+  --color-warning: #F59E0B;
+  --color-error: #EF4444;
+  --color-info: #3B82F6;
+}
+
+/* Base Styles */
+body {
+  color: var(--color-text-primary);
+  background: var(--color-background);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* Focus States - Accessibility */
+*:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* Smooth Scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Selection Color */
+::selection {
+  background-color: var(--color-accent-100);
+  color: var(--color-primary-900);
+}
+
+/* Flashcard 3D Flip Animation */
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.transform-style-preserve-3d {
+  transform-style: preserve-3d;
+}
+
+.backface-hidden {
+  backface-visibility: hidden;
+}
+
+.rotate-y-180 {
+  transform: rotateY(180deg);
+}

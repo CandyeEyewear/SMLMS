@@ -1,0 +1,20 @@
+{
+  "name": "sm-lms-platform",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=apps/web",
+    "build": "npm run build --workspace=apps/web",
+    "start": "npm run start --workspace=apps/web",
+    "lint": "npm run lint --workspace=apps/web",
+    "type-check": "npm run type-check --workspaces --if-present",
+    "db:deploy": "node supabase/deploy-schema.mjs"
+  },
+  "engines": {
+    "node": ">=18.17.0"
+  }
+}
