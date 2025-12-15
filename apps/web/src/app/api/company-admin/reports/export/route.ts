@@ -56,7 +56,26 @@ export async function GET(request: NextRequest) {
       .eq('company_id', profile.company_id)
       .order('enrolled_at', { ascending: false });
 
-    const enrollments = (enrollmentsData || []) as Array<{
+    // Transform the data to handle Supabase's response format
+    const enrollments = ((enrollmentsData || []) as Array<{
+      id: any;
+      course_id: any;
+      status: any;
+      progress_percent: any;
+      enrolled_at: any;
+      completed_at: any;
+      course: { id: any; title: any } | { id: any; title: any }[] | null;
+    }>).map((enrollment) => ({
+      id: String(enrollment.id),
+      course_id: String(enrollment.course_id),
+      status: String(enrollment.status),
+      progress_percent: Number(enrollment.progress_percent) || 0,
+      enrolled_at: String(enrollment.enrolled_at),
+      completed_at: enrollment.completed_at ? String(enrollment.completed_at) : null,
+      course: Array.isArray(enrollment.course) 
+        ? { id: String(enrollment.course[0]?.id || ''), title: String(enrollment.course[0]?.title || '') }
+        : (enrollment.course ? { id: String(enrollment.course.id || ''), title: String(enrollment.course.title || '') } : { id: '', title: '' }),
+    })) as Array<{
       id: string;
       course_id: string;
       status: string;
@@ -79,7 +98,24 @@ export async function GET(request: NextRequest) {
       `)
       .eq('user_id', userId);
 
-    const progress = (progressData || []) as Array<{
+    // Transform the progress data to handle Supabase's response format
+    const progress = ((progressData || []) as Array<{
+      course_id: any;
+      completed_lessons_count: any;
+      total_lessons_count: any;
+      time_spent_seconds: any;
+      last_accessed_at: any;
+      course: { id: any; title: any } | { id: any; title: any }[] | null;
+    }>).map((p) => ({
+      course_id: String(p.course_id),
+      completed_lessons_count: Number(p.completed_lessons_count) || 0,
+      total_lessons_count: Number(p.total_lessons_count) || 0,
+      time_spent_seconds: Number(p.time_spent_seconds) || 0,
+      last_accessed_at: p.last_accessed_at ? String(p.last_accessed_at) : null,
+      course: Array.isArray(p.course)
+        ? { id: String(p.course[0]?.id || ''), title: String(p.course[0]?.title || '') }
+        : (p.course ? { id: String(p.course.id || ''), title: String(p.course.title || '') } : { id: '', title: '' }),
+    })) as Array<{
       course_id: string;
       completed_lessons_count: number;
       total_lessons_count: number;
@@ -106,7 +142,50 @@ export async function GET(request: NextRequest) {
       .eq('user_id', userId)
       .order('started_at', { ascending: false });
 
-    const quizAttempts = (quizAttemptsData || []) as Array<{
+    // Transform the quiz attempts data to handle Supabase's response format
+    const quizAttempts = ((quizAttemptsData || []) as Array<{
+      quiz_id: any;
+      attempt_number: any;
+      score: any;
+      max_score: any;
+      percentage: any;
+      passed: any;
+      time_spent_seconds: any;
+      started_at: any;
+      submitted_at: any;
+      quiz: { 
+        id: any; 
+        title: any; 
+        course_id: any;
+        course: { id: any; title: any } | { id: any; title: any }[] | null;
+      } | { 
+        id: any; 
+        title: any; 
+        course_id: any;
+        course: { id: any; title: any } | { id: any; title: any }[] | null;
+      }[] | null;
+    }>).map((attempt) => {
+      const quiz = Array.isArray(attempt.quiz) ? attempt.quiz[0] : attempt.quiz;
+      const course = quiz && !Array.isArray(quiz.course) ? quiz.course : (Array.isArray(quiz?.course) ? quiz.course[0] : null);
+      
+      return {
+        quiz_id: String(attempt.quiz_id),
+        attempt_number: Number(attempt.attempt_number) || 0,
+        score: Number(attempt.score) || 0,
+        max_score: Number(attempt.max_score) || 0,
+        percentage: Number(attempt.percentage) || 0,
+        passed: Boolean(attempt.passed),
+        time_spent_seconds: Number(attempt.time_spent_seconds) || 0,
+        started_at: String(attempt.started_at),
+        submitted_at: attempt.submitted_at ? String(attempt.submitted_at) : null,
+        quiz: {
+          id: quiz ? String(quiz.id || '') : '',
+          title: quiz ? String(quiz.title || '') : '',
+          course_id: quiz ? String(quiz.course_id || '') : '',
+          course: course ? { id: String(course.id || ''), title: String(course.title || '') } : null,
+        },
+      };
+    }) as Array<{
       quiz_id: string;
       attempt_number: number;
       score: number;

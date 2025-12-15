@@ -10,7 +10,7 @@ export default async function LearnerDashboard() {
     redirect('/login');
   }
 
-  const { data: profile, error: profileError } = await supabase
+  let { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('full_name, role, company_id')
     .eq('id', user.id)

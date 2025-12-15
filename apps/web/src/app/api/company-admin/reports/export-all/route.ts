@@ -59,7 +59,32 @@ export async function GET(request: NextRequest) {
       .eq('company_id', companyId)
       .order('enrolled_at', { ascending: false });
 
-    const enrollments = (enrollmentsData || []) as Array<{
+    // Transform the data to handle Supabase's response format
+    const enrollments = ((enrollmentsData || []) as Array<{
+      id: any;
+      user_id: any;
+      course_id: any;
+      status: any;
+      progress_percent: any;
+      enrolled_at: any;
+      completed_at: any;
+      course: { id: any; title: any } | { id: any; title: any }[] | null;
+      user: { id: any; email: any; full_name: any } | { id: any; email: any; full_name: any }[] | null;
+    }>).map((enrollment) => ({
+      id: String(enrollment.id),
+      user_id: String(enrollment.user_id),
+      course_id: String(enrollment.course_id),
+      status: String(enrollment.status),
+      progress_percent: Number(enrollment.progress_percent) || 0,
+      enrolled_at: String(enrollment.enrolled_at),
+      completed_at: enrollment.completed_at ? String(enrollment.completed_at) : null,
+      course: Array.isArray(enrollment.course) 
+        ? { id: String(enrollment.course[0]?.id || ''), title: String(enrollment.course[0]?.title || '') }
+        : (enrollment.course ? { id: String(enrollment.course.id || ''), title: String(enrollment.course.title || '') } : { id: '', title: '' }),
+      user: Array.isArray(enrollment.user)
+        ? { id: String(enrollment.user[0]?.id || ''), email: String(enrollment.user[0]?.email || ''), full_name: enrollment.user[0]?.full_name ? String(enrollment.user[0].full_name) : null }
+        : (enrollment.user ? { id: String(enrollment.user.id || ''), email: String(enrollment.user.email || ''), full_name: enrollment.user.full_name ? String(enrollment.user.full_name) : null } : { id: '', email: '', full_name: null }),
+    })) as Array<{
       id: string;
       user_id: string;
       course_id: string;
@@ -87,7 +112,24 @@ export async function GET(request: NextRequest) {
           .in('user_id', userIds)
       : { data: [] };
 
-    const progress = (progressData || []) as Array<{
+    // Transform the progress data to handle Supabase's response format
+    const progress = ((progressData || []) as Array<{
+      user_id: any;
+      course_id: any;
+      completed_lessons_count: any;
+      total_lessons_count: any;
+      time_spent_seconds: any;
+      course: { id: any; title: any } | { id: any; title: any }[] | null;
+    }>).map((p) => ({
+      user_id: String(p.user_id),
+      course_id: String(p.course_id),
+      completed_lessons_count: Number(p.completed_lessons_count) || 0,
+      total_lessons_count: Number(p.total_lessons_count) || 0,
+      time_spent_seconds: Number(p.time_spent_seconds) || 0,
+      course: Array.isArray(p.course)
+        ? { id: String(p.course[0]?.id || ''), title: String(p.course[0]?.title || '') }
+        : (p.course ? { id: String(p.course.id || ''), title: String(p.course.title || '') } : { id: '', title: '' }),
+    })) as Array<{
       user_id: string;
       course_id: string;
       completed_lessons_count: number;

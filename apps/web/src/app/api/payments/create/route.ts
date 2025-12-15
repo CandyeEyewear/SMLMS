@@ -43,9 +43,9 @@ export async function POST(request: NextRequest) {
     // Get user profile
     const { data: profile } = await supabase
       .from('profiles')
-      .select('email, full_name, company_id')
+      .select('email, full_name, company_id, role')
       .eq('id', user.id)
-      .single();
+      .single<{ email: string; full_name: string | null; company_id: string | null; role: string }>();
 
     if (!profile) {
       return NextResponse.json({ error: 'Profile not found' }, { status: 404 });

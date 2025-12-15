@@ -17,7 +17,7 @@ export type ContentBlockType = {
   order: number;
 };
 
-type CourseMetadata = {
+export type CourseMetadata = {
   title: string;
   slug: string;
   description: string;

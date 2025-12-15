@@ -92,7 +92,7 @@ export function ContentBlock({
   }
 }
 
-function VideoBlock({ block, isSelected, onSelect, onUpdate, showProperties }: Omit<ContentBlockProps, 'onDelete' | 'onDuplicate'>) {
+function VideoBlock({ block, isSelected, onSelect, onUpdate, showProperties }: Omit<ContentBlockProps, 'onDelete' | 'onDuplicate'> & { onUpdate: (data: any) => void }) {
   const data = block.data || { url: '', title: '', description: '' };
 
   if (showProperties) {
@@ -159,7 +159,7 @@ function VideoBlock({ block, isSelected, onSelect, onUpdate, showProperties }: O
   );
 }
 
-function ImageBlock({ block, isSelected, onSelect, onUpdate, showProperties }: Omit<ContentBlockProps, 'onDelete' | 'onDuplicate'>) {
+function ImageBlock({ block, isSelected, onSelect, onUpdate, showProperties }: Omit<ContentBlockProps, 'onDelete' | 'onDuplicate'> & { onUpdate: (data: any) => void }) {
   const data = block.data || { url: '', alt: '', caption: '' };
 
   if (showProperties) {
@@ -218,7 +218,7 @@ function ImageBlock({ block, isSelected, onSelect, onUpdate, showProperties }: O
   );
 }
 
-function TextBlock({ block, isSelected, onSelect, onUpdate, showProperties }: Omit<ContentBlockProps, 'onDelete' | 'onDuplicate'>) {
+function TextBlock({ block, isSelected, onSelect, onUpdate, showProperties }: Omit<ContentBlockProps, 'onDelete' | 'onDuplicate'> & { onUpdate: (data: any) => void }) {
   const data = block.data || { content: '', title: '' };
 
   if (showProperties) {
@@ -262,7 +262,7 @@ function TextBlock({ block, isSelected, onSelect, onUpdate, showProperties }: Om
   );
 }
 
-function QuizBlock({ block, isSelected, onSelect, onUpdate, showProperties }: Omit<ContentBlockProps, 'onDelete' | 'onDuplicate'>) {
+function QuizBlock({ block, isSelected, onSelect, onUpdate, showProperties }: Omit<ContentBlockProps, 'onDelete' | 'onDuplicate'> & { onUpdate: (data: any) => void }) {
   const data = block.data || { title: '', questions: [] };
 
   if (showProperties) {
@@ -302,7 +302,7 @@ function QuizBlock({ block, isSelected, onSelect, onUpdate, showProperties }: Om
   );
 }
 
-function FileBlock({ block, isSelected, onSelect, onUpdate, showProperties }: Omit<ContentBlockProps, 'onDelete' | 'onDuplicate'>) {
+function FileBlock({ block, isSelected, onSelect, onUpdate, showProperties }: Omit<ContentBlockProps, 'onDelete' | 'onDuplicate'> & { onUpdate: (data: any) => void }) {
   const data = block.data || { url: '', title: '', description: '' };
 
   if (showProperties) {
@@ -372,7 +372,7 @@ function FileBlock({ block, isSelected, onSelect, onUpdate, showProperties }: Om
   );
 }
 
-function EmbedBlock({ block, isSelected, onSelect, onUpdate, showProperties }: Omit<ContentBlockProps, 'onDelete' | 'onDuplicate'>) {
+function EmbedBlock({ block, isSelected, onSelect, onUpdate, showProperties }: Omit<ContentBlockProps, 'onDelete' | 'onDuplicate'> & { onUpdate: (data: any) => void }) {
   const data = block.data || { embedCode: '', title: '' };
 
   if (showProperties) {

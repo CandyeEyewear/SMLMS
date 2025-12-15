@@ -16,7 +16,7 @@ export function CourseMetadataForm({ metadata, categories, onUpdate, onClose }: 
   const [error, setError] = useState<string | null>(null);
 
   const handleChange = (field: keyof CourseMetadata, value: any) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setFormData((prev: CourseMetadata) => ({ ...prev, [field]: value }));
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
