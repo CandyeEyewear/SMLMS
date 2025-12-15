@@ -164,7 +164,7 @@ export default function SetupFeePage() {
 
           <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <p className="text-sm text-blue-800">
-              <strong>Note:</strong> This is a one-time setup fee. After payment, you'll be able to
+              <strong>Note:</strong> This is a one-time setup fee. After payment, you&apos;ll be able to
               request courses and add users to your company.
             </p>
           </div>

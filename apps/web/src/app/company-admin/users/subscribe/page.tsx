@@ -70,7 +70,7 @@ export default function UserSubscriptionPage() {
 
   const getBillingPeriodDates = () => {
     const start = new Date();
-    let end = new Date();
+    const end = new Date();
 
     if (billingPeriod === 'monthly') {
       end.setMonth(end.getMonth() + 1);
@@ -190,7 +190,7 @@ export default function UserSubscriptionPage() {
 
           <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <p className="text-sm text-blue-800">
-              <strong>Note:</strong> This is a recurring subscription. After payment, you'll be able to
+              <strong>Note:</strong> This is a recurring subscription. After payment, you&apos;ll be able to
               add {userCount} user{userCount !== 1 ? 's' : ''} to your company. The subscription will
               automatically renew every {billingPeriod === 'monthly' ? 'month' : billingPeriod === 'quarterly' ? '3 months' : 'year'}.
             </p>

@@ -307,7 +307,7 @@ function ChecklistBlock({ content }: { content: { title?: string; items: string[
 function QuoteBlock({ content }: { content: { text: string; author?: string; source?: string } }) {
   return (
     <blockquote className="border-l-4 border-primary-500 pl-4 py-2 italic text-gray-700">
-      <p className="mb-2">"{content.text}"</p>
+      <p className="mb-2">&quot;{content.text}&quot;</p>
       {(content.author || content.source) && (
         <footer className="text-sm text-gray-600">
           — {content.author}
