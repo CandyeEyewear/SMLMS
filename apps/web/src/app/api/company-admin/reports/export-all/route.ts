@@ -28,13 +28,18 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Fetch all team members
-    const { data: teamMembersData } = await supabase
+    // Define limits to prevent memory/timeout issues on Vercel
+    const MAX_TEAM_MEMBERS = 500;
+    const MAX_ENROLLMENTS = 2000;
+
+    // Fetch team members with limit
+    const { data: teamMembersData, count: teamMembersCount } = await supabase
       .from('profiles')
-      .select('id, email, full_name')
+      .select('id, email, full_name', { count: 'exact' })
       .eq('company_id', companyId)
       .eq('role', 'user')
-      .order('full_name');
+      .order('full_name')
+      .limit(MAX_TEAM_MEMBERS);
 
     const teamMembers = (teamMembersData || []) as Array<{
       id: string;
@@ -42,7 +47,10 @@ export async function GET(request: NextRequest) {
       full_name: string | null;
     }>;
 
-    // Fetch all enrollments for the company
+    // Warn if data was truncated
+    const isTruncated = (teamMembersCount || 0) > MAX_TEAM_MEMBERS;
+
+    // Fetch enrollments with limit
     const { data: enrollmentsData } = await supabase
       .from('enrollments')
       .select(`
@@ -57,7 +65,8 @@ export async function GET(request: NextRequest) {
         user:profiles(id, email, full_name)
       `)
       .eq('company_id', companyId)
-      .order('enrolled_at', { ascending: false });
+      .order('enrolled_at', { ascending: false })
+      .limit(MAX_ENROLLMENTS);
 
     // Transform the data to handle Supabase's response format
     const enrollments = ((enrollmentsData || []) as Array<{
@@ -96,8 +105,9 @@ export async function GET(request: NextRequest) {
       user: { id: string; email: string; full_name: string | null };
     }>;
 
-    // Fetch progress for all users
+    // Fetch progress for all users with limit
     const userIds = teamMembers.map((tm) => tm.id);
+    const MAX_PROGRESS_RECORDS = 5000;
     const { data: progressData } = userIds.length > 0
       ? await supabase
           .from('user_course_progress')
@@ -110,6 +120,7 @@ export async function GET(request: NextRequest) {
             course:courses(id, title)
           `)
           .in('user_id', userIds)
+          .limit(MAX_PROGRESS_RECORDS)
       : { data: [] };
 
     // Transform the progress data to handle Supabase's response format
@@ -144,7 +155,10 @@ export async function GET(request: NextRequest) {
     // Header
     csvRows.push('Team Performance Report');
     csvRows.push(`Generated: ${new Date().toLocaleString()}`);
-    csvRows.push(`Total Team Members: ${teamMembers.length}`);
+    csvRows.push(`Total Team Members: ${teamMembers.length}${isTruncated ? ` (showing first ${MAX_TEAM_MEMBERS} of ${teamMembersCount})` : ''}`);
+    if (isTruncated) {
+      csvRows.push('Note: Report was truncated due to large data size. Consider exporting individual user reports for complete data.');
+    }
     csvRows.push('');
 
     // Summary Section

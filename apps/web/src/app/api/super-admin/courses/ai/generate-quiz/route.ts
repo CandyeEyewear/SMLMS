@@ -38,30 +38,46 @@ export async function POST(request: NextRequest) {
       questionCount: questionCount || 5,
     });
 
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o',
-      messages: [
-        {
-          role: 'system',
-          content: 'You are an expert instructional designer. Return only valid JSON, no markdown, no code blocks.',
-        },
-        {
-          role: 'user',
-          content: prompt,
-        },
-      ],
-      response_format: { type: 'json_object' },
-      temperature: 0.7,
-    });
+    // Use AbortController with 55 second timeout (Vercel has 60s limit)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 55000);
 
-    const content = completion.choices[0]?.message?.content;
-    if (!content) {
-      return NextResponse.json({ error: 'No response from AI' }, { status: 500 });
+    try {
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are an expert instructional designer. Return only valid JSON, no markdown, no code blocks.',
+          },
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        response_format: { type: 'json_object' },
+        temperature: 0.7,
+      }, { signal: controller.signal });
+      clearTimeout(timeoutId);
+
+      const content = completion.choices[0]?.message?.content;
+      if (!content) {
+        return NextResponse.json({ error: 'No response from AI' }, { status: 500 });
+      }
+
+      const quiz = JSON.parse(content);
+
+      return NextResponse.json({ quiz });
+    } catch (aiError: any) {
+      clearTimeout(timeoutId);
+      if (aiError.name === 'AbortError') {
+        return NextResponse.json(
+          { error: 'AI request timed out. Please try again.' },
+          { status: 504 }
+        );
+      }
+      throw aiError;
     }
-
-    const quiz = JSON.parse(content);
-
-    return NextResponse.json({ quiz });
   } catch (error: any) {
     console.error('Error generating quiz:', error);
     return NextResponse.json(

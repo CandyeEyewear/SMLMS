@@ -111,8 +111,14 @@ export async function POST(request: NextRequest) {
     const siteUrl =
       process.env.EZEE_SITE ||
       process.env.EZEE_SITE_URL ||
-      process.env.NEXT_PUBLIC_APP_URL ||
-      'http://localhost:3000';
+      process.env.NEXT_PUBLIC_APP_URL;
+    if (!siteUrl) {
+      console.error('Missing required environment variable: NEXT_PUBLIC_APP_URL, EZEE_SITE, or EZEE_SITE_URL');
+      return NextResponse.json(
+        { error: 'Server configuration error: missing site URL' },
+        { status: 500 }
+      );
+    }
     const postBackUrl = `${siteUrl}/api/webhooks/ezee-payments`;
     const returnUrl = `${siteUrl}/payments/success?payment_id=${payment.id}`;
     const cancelUrl = `${siteUrl}/payments/cancel?payment_id=${payment.id}`;
