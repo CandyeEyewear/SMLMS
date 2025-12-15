@@ -2,11 +2,26 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  { auth: { autoRefreshToken: false, persistSession: false } }
-);
+function getSupabaseAdmin() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !serviceRoleKey) {
+    throw new Error('Missing required environment variables: NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
+  }
+
+  return createClient(supabaseUrl, serviceRoleKey, {
+    auth: { autoRefreshToken: false, persistSession: false }
+  });
+}
+
+function getAppUrl() {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+  if (!appUrl) {
+    throw new Error('Missing required environment variable: NEXT_PUBLIC_APP_URL');
+  }
+  return appUrl;
+}
 
 export async function inviteCompanyAdmin(
   companyId: string,
@@ -14,6 +29,9 @@ export async function inviteCompanyAdmin(
   fullName: string
 ) {
   try {
+    const supabaseAdmin = getSupabaseAdmin();
+    const appUrl = getAppUrl();
+
     // 1. Invite user via Supabase Auth (sends email automatically)
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
       data: {
@@ -21,7 +39,7 @@ export async function inviteCompanyAdmin(
         company_id: companyId,
         role: 'company_admin',
       },
-      redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/callback`,
+      redirectTo: `${appUrl}/auth/callback`,
     });
 
     if (authError) {

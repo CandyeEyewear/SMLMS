@@ -40,7 +40,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Fetch enrollments
+    // Fetch enrollments with limit
+    const MAX_ENROLLMENTS = 500;
     const { data: enrollmentsData } = await supabase
       .from('enrollments')
       .select(`
@@ -54,7 +55,8 @@ export async function GET(request: NextRequest) {
       `)
       .eq('user_id', userId)
       .eq('company_id', profile.company_id)
-      .order('enrolled_at', { ascending: false });
+      .order('enrolled_at', { ascending: false })
+      .limit(MAX_ENROLLMENTS);
 
     // Transform the data to handle Supabase's response format
     const enrollments = ((enrollmentsData || []) as Array<{
@@ -85,7 +87,8 @@ export async function GET(request: NextRequest) {
       course: { id: string; title: string };
     }>;
 
-    // Fetch progress
+    // Fetch progress with limit
+    const MAX_PROGRESS = 500;
     const { data: progressData } = await supabase
       .from('user_course_progress')
       .select(`
@@ -96,7 +99,8 @@ export async function GET(request: NextRequest) {
         last_accessed_at,
         course:courses(id, title)
       `)
-      .eq('user_id', userId);
+      .eq('user_id', userId)
+      .limit(MAX_PROGRESS);
 
     // Transform the progress data to handle Supabase's response format
     const progress = ((progressData || []) as Array<{
@@ -124,7 +128,8 @@ export async function GET(request: NextRequest) {
       course: { id: string; title: string };
     }>;
 
-    // Fetch quiz attempts
+    // Fetch quiz attempts with limit
+    const MAX_QUIZ_ATTEMPTS = 500;
     const { data: quizAttemptsData } = await supabase
       .from('user_quiz_attempts')
       .select(`
@@ -140,7 +145,8 @@ export async function GET(request: NextRequest) {
         quiz:quizzes(id, title, course_id, course:courses(id, title))
       `)
       .eq('user_id', userId)
-      .order('started_at', { ascending: false });
+      .order('started_at', { ascending: false })
+      .limit(MAX_QUIZ_ATTEMPTS);
 
     // Transform the quiz attempts data to handle Supabase's response format
     const quizAttempts = ((quizAttemptsData || []) as Array<{
