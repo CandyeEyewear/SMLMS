@@ -75,14 +75,22 @@ export async function POST(request: NextRequest) {
       .substr(2, 9)
       .toUpperCase()}`;
 
+    // Get invoice to get currency
+    const { data: invoice } = await supabase
+      .from('invoices')
+      .select('currency')
+      .eq('course_activation_id', courseActivationId)
+      .single();
+
     // Create payment record
     const { data: payment, error: paymentError } = await supabase
       .from('payments')
       .insert({
         company_id: activation.company_id,
+        course_activation_id: courseActivationId,
         payment_type: 'course_activation',
         amount: activation.total_paid,
-        currency: 'USD', // Should get from activation/invoice
+        currency: invoice?.currency || 'USD',
         user_count: activation.seat_count,
         status: 'pending',
         order_id: orderId,

@@ -115,6 +115,21 @@ CREATE TABLE IF NOT EXISTS expiry_reminders (
 );
 
 -- ============================================
+-- UPDATE PAYMENTS TABLE
+-- ============================================
+ALTER TABLE payments
+ADD COLUMN IF NOT EXISTS course_activation_id UUID REFERENCES course_activations(id) ON DELETE SET NULL,
+ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}';
+
+-- Update payment_type check constraint to include 'course_activation'
+ALTER TABLE payments
+DROP CONSTRAINT IF EXISTS payments_payment_type_check;
+
+ALTER TABLE payments
+ADD CONSTRAINT payments_payment_type_check 
+CHECK (payment_type IN ('setup_fee', 'user_subscription', 'course_purchase', 'course_activation'));
+
+-- ============================================
 -- INDEXES
 -- ============================================
 CREATE INDEX IF NOT EXISTS idx_course_pricing_course_id ON course_pricing(course_id);
