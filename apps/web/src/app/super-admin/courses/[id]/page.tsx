@@ -60,7 +60,7 @@ export default async function CourseDetailPage({
       is_featured,
       created_at,
       updated_at,
-      category:course_categories(id, name)
+      category:categories(id, name)
     `)
     .eq('id', id)
     .single();

@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
 
     // Check if slug already exists
     const { data: existingCategory } = await supabase
-      .from('course_categories' as never)
+      .from('categories' as never)
       .select('id')
       .eq('slug' as never, slug as never)
       .single();
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
 
     // Create the category
     const { data: category, error: createError } = await supabase
-      .from('course_categories' as never)
+      .from('categories' as never)
       .insert({
         name,
         description,

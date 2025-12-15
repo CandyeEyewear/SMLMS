@@ -28,7 +28,7 @@ export default async function AICourseBuilderPage() {
 
   // Fetch categories for the dropdown
   const { data: categoriesData } = await supabase
-    .from('course_categories' as never)
+    .from('categories' as never)
     .select('id, name')
     .order('name');
 

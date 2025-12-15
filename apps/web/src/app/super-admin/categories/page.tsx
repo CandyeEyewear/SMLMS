@@ -38,7 +38,7 @@ export default async function CategoriesPage() {
 
   // Fetch categories with course counts
   const { data: categoriesData } = await supabase
-    .from('course_categories' as never)
+    .from('categories' as never)
     .select(`
       id,
       name,

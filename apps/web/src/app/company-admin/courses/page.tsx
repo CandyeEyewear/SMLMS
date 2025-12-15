@@ -65,7 +65,7 @@ export default async function CompanyCoursesPage() {
         thumbnail_url,
         duration_minutes,
         is_active,
-        category:course_categories(id, name)
+        category:categories(id, name)
       `)
       .in('id', courseIds)
       .eq('is_active', true)
