@@ -10,14 +10,14 @@ export default async function LearnerDashboard() {
     redirect('/login');
   }
 
-  let { data: profile, error: profileError } = await supabase
+  let { data: profile } = await supabase
     .from('profiles')
     .select('full_name, role, company_id')
     .eq('id', user.id)
     .maybeSingle<{ full_name: string | null; role: string; company_id: string | null }>();
 
   // If profile doesn't exist, create one with default 'user' role
-  if (!profile && !profileError) {
+  if (!profile) {
     const { error: insertError } = await supabase
       .from('profiles')
       .insert({
