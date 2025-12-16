@@ -2,6 +2,51 @@ import { createClient } from '@/lib/supabase/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 
+function formatUnknownError(err: unknown) {
+  if (err instanceof Error) {
+    return { message: err.message };
+  }
+  if (typeof err === 'string') {
+    return { message: err };
+  }
+  if (err && typeof err === 'object') {
+    const anyErr = err as any;
+    // Supabase/PostgREST errors often look like: { message, details, hint, code }
+    const message =
+      typeof anyErr.message === 'string'
+        ? anyErr.message
+        : typeof anyErr.error === 'string'
+          ? anyErr.error
+          : 'Unknown error';
+    const details = typeof anyErr.details === 'string' ? anyErr.details : undefined;
+    const hint = typeof anyErr.hint === 'string' ? anyErr.hint : undefined;
+    const code = typeof anyErr.code === 'string' ? anyErr.code : undefined;
+    return { message, details, hint, code };
+  }
+  return { message: 'Unknown error' };
+}
+
+function maybeStripMissingColumn(payload: Record<string, any>, err: unknown) {
+  const formatted = formatUnknownError(err);
+  // PostgREST missing column error looks like:
+  // "Could not find the 'is_active' column of 'courses' in the schema cache"
+  if (formatted.code !== 'PGRST204' || typeof formatted.message !== 'string') {
+    return { payload, stripped: null as string | null };
+  }
+
+  const match = formatted.message.match(/Could not find the '([^']+)' column of 'courses'/);
+  const column = match?.[1];
+  if (!column) return { payload, stripped: null as string | null };
+
+  if (Object.prototype.hasOwnProperty.call(payload, column)) {
+    const next = { ...payload };
+    delete next[column];
+    return { payload: next, stripped: column };
+  }
+
+  return { payload, stripped: null as string | null };
+}
+
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
@@ -34,6 +79,7 @@ export async function POST(request: NextRequest) {
         category_id?: string;
         is_active?: boolean;
         is_featured?: boolean;
+        original_prompt?: string;
       };
       modules?: Array<{
         id: string;
@@ -85,66 +131,111 @@ export async function POST(request: NextRequest) {
 
     if (courseId) {
       // Update existing course
-      const { data: updatedCourse, error: updateError } = await admin
-        .from('courses')
-        .update({
-          title: metadata.title,
-          slug: metadata.slug,
-          description: metadata.description || null,
-          thumbnail_url: metadata.thumbnail_url || null,
-          duration_minutes: metadata.duration_minutes || null,
-          category_id: metadata.category_id || null,
-          is_active: metadata.is_active ?? true,
-          is_featured: metadata.is_featured ?? false,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', courseId)
-        .select()
-        .single();
+      const updatePayload: Record<string, any> = {
+        title: metadata.title,
+        slug: metadata.slug,
+        description: metadata.description || null,
+        thumbnail_url: metadata.thumbnail_url || null,
+        duration_minutes: metadata.duration_minutes || null,
+        category_id: metadata.category_id || null,
+        is_active: metadata.is_active ?? true,
+        is_featured: metadata.is_featured ?? false,
+        updated_at: new Date().toISOString(),
+      };
 
-      if (updateError) {
-        throw updateError;
+      // Only include when provided (avoid sending null/undefined into NOT NULL columns).
+      if (typeof metadata.original_prompt === 'string' && metadata.original_prompt.trim()) {
+        updatePayload.original_prompt = metadata.original_prompt;
+      }
+
+      let updatedCourse: any = null;
+      try {
+        const res = await admin
+          .from('courses')
+          .update(updatePayload as never)
+          .eq('id', courseId)
+          .select()
+          .single();
+        if (res.error) throw res.error;
+        updatedCourse = res.data;
+      } catch (err) {
+        // If schema is behind (missing column), strip it and retry once.
+        const stripped1 = maybeStripMissingColumn(updatePayload, err);
+        if (!stripped1.stripped) throw err;
+        const res2 = await admin
+          .from('courses')
+          .update(stripped1.payload as never)
+          .eq('id', courseId)
+          .select()
+          .single();
+        if (res2.error) throw res2.error;
+        updatedCourse = res2.data;
       }
 
       course = updatedCourse;
     } else {
       // Create new course
-      const generatedSlug = metadata.slug || metadata.title
+      const baseSlug = (metadata.slug || metadata.title || 'course')
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/(^-|-$)/g, '');
 
-      // Check if slug already exists
-      const { data: existingCourse } = await admin
-        .from('courses')
-        .select('id')
-        .eq('slug', generatedSlug)
-        .maybeSingle();
-
-      if (existingCourse) {
-        return NextResponse.json(
-          { error: 'A course with this slug already exists' },
-          { status: 400 }
-        );
+      // Ensure slug is unique (auto-suffix: "-2", "-3", ...)
+      let generatedSlug = baseSlug || 'course';
+      for (let i = 0; i < 50; i++) {
+        const candidate = i === 0 ? generatedSlug : `${generatedSlug}-${i + 1}`;
+        const { data: existingCourse, error: checkError } = await admin
+          .from('courses')
+          .select('id')
+          .eq('slug', candidate)
+          .maybeSingle();
+        if (checkError) throw checkError;
+        if (!existingCourse) {
+          generatedSlug = candidate;
+          break;
+        }
+        if (i === 49) {
+          return NextResponse.json(
+            { error: 'Unable to generate a unique course slug. Please change the title.' },
+            { status: 400 }
+          );
+        }
       }
 
-      const { data: newCourse, error: createError } = await admin
-        .from('courses')
-        .insert({
-          title: metadata.title,
-          slug: generatedSlug,
-          description: metadata.description || null,
-          thumbnail_url: metadata.thumbnail_url || null,
-          duration_minutes: metadata.duration_minutes || null,
-          category_id: metadata.category_id || null,
-          is_active: metadata.is_active ?? true,
-          is_featured: metadata.is_featured ?? false,
-        })
-        .select()
-        .single();
+      const insertPayload: Record<string, any> = {
+        title: metadata.title,
+        slug: generatedSlug,
+        description: metadata.description || null,
+        thumbnail_url: metadata.thumbnail_url || null,
+        duration_minutes: metadata.duration_minutes || null,
+        category_id: metadata.category_id || null,
+        is_active: metadata.is_active ?? true,
+        is_featured: metadata.is_featured ?? false,
+      };
 
-      if (createError) {
-        throw createError;
+      if (typeof metadata.original_prompt === 'string' && metadata.original_prompt.trim()) {
+        insertPayload.original_prompt = metadata.original_prompt;
+      }
+
+      let newCourse: any = null;
+      try {
+        const res = await admin
+          .from('courses')
+          .insert(insertPayload as never)
+          .select()
+          .single();
+        if (res.error) throw res.error;
+        newCourse = res.data;
+      } catch (err) {
+        const stripped1 = maybeStripMissingColumn(insertPayload, err);
+        if (!stripped1.stripped) throw err;
+        const res2 = await admin
+          .from('courses')
+          .insert(stripped1.payload as never)
+          .select()
+          .single();
+        if (res2.error) throw res2.error;
+        newCourse = res2.data;
       }
 
       course = newCourse;
@@ -172,14 +263,17 @@ export async function POST(request: NextRequest) {
     }
 
     const moduleIds = moduleRows.map((m) => m.id);
-    const moduleIdList = `(${moduleIds.map((id) => `"${id}"`).join(',')})`;
 
     // Delete removed modules (and cascades lessons via FK)
-    await admin
-      .from('modules')
-      .delete()
-      .eq('course_id', course.id)
-      .not('id', 'in', moduleIdList);
+    // PostgREST expects `in.(a,b,c)`-style lists; values should not be quoted.
+    if (moduleIds.length > 0) {
+      const moduleIdList = `(${moduleIds.join(',')})`;
+      await admin
+        .from('modules')
+        .delete()
+        .eq('course_id', course.id)
+        .not('id', 'in', moduleIdList);
+    }
 
     const lessonRows = (modules || []).flatMap((m, mi) =>
       (m.lessons || []).map((l, li) => ({
@@ -207,14 +301,16 @@ export async function POST(request: NextRequest) {
     }
 
     const lessonIds = lessonRows.map((l) => l.id);
-    const lessonIdList = `(${lessonIds.map((id) => `"${id}"`).join(',')})`;
 
     // Delete removed lessons within remaining modules
-    await admin
-      .from('lessons')
-      .delete()
-      .in('module_id', moduleIds)
-      .not('id', 'in', lessonIdList);
+    if (moduleIds.length > 0 && lessonIds.length > 0) {
+      const lessonIdList = `(${lessonIds.join(',')})`;
+      await admin
+        .from('lessons')
+        .delete()
+        .in('module_id', moduleIds)
+        .not('id', 'in', lessonIdList);
+    }
 
     return NextResponse.json({
       success: true,
@@ -222,9 +318,10 @@ export async function POST(request: NextRequest) {
       course,
     });
   } catch (error) {
-    console.error('Error saving course:', error);
+    const formatted = formatUnknownError(error);
+    console.error('Error saving course:', formatted, error);
     return NextResponse.json(
-      { error: 'Failed to save course' },
+      { error: 'Failed to save course', details: formatted },
       { status: 500 }
     );
   }
