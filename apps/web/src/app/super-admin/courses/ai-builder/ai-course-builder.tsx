@@ -135,6 +135,97 @@ function getDefaultContentForBlockType(blockType: string): Record<string, unknow
 }
 
 // ============================================================================
+// CONFIRM DIALOG COMPONENT
+// ============================================================================
+
+function ConfirmDialog({
+  isOpen,
+  title,
+  message,
+  onConfirm,
+  onCancel,
+  confirmText = 'Confirm',
+  cancelText = 'Cancel',
+  variant = 'danger',
+}: {
+  isOpen: boolean;
+  title: string;
+  message: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+  confirmText?: string;
+  cancelText?: string;
+  variant?: 'danger' | 'warning' | 'info';
+}) {
+  if (!isOpen) return null;
+
+  const variantStyles = {
+    danger: {
+      icon: '🗑️',
+      iconBg: 'bg-red-100',
+      button: 'bg-red-600 hover:bg-red-700 focus:ring-red-500',
+    },
+    warning: {
+      icon: '⚠️',
+      iconBg: 'bg-yellow-100',
+      button: 'bg-yellow-600 hover:bg-yellow-700 focus:ring-yellow-500',
+    },
+    info: {
+      icon: 'ℹ️',
+      iconBg: 'bg-blue-100',
+      button: 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500',
+    },
+  };
+
+  const styles = variantStyles[variant];
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
+        onClick={onCancel}
+      />
+
+      {/* Dialog */}
+      <div className="flex min-h-full items-center justify-center p-4">
+        <div className="relative bg-white rounded-xl shadow-xl max-w-md w-full p-6 transform transition-all">
+          {/* Icon */}
+          <div className={`mx-auto w-12 h-12 ${styles.iconBg} rounded-full flex items-center justify-center mb-4`}>
+            <span className="text-2xl">{styles.icon}</span>
+          </div>
+
+          {/* Content */}
+          <div className="text-center">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">{title}</h3>
+            <p className="text-sm text-gray-600 mb-6">{message}</p>
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-3">
+            <button
+              onClick={onCancel}
+              className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
+            >
+              {cancelText}
+            </button>
+            <button
+              onClick={() => {
+                onConfirm();
+                onCancel();
+              }}
+              className={`flex-1 px-4 py-2.5 text-sm font-medium text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors ${styles.button}`}
+            >
+              {confirmText}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
 // STEP INDICATOR COMPONENT
 // ============================================================================
 
@@ -1651,6 +1742,17 @@ export function AICourseBuilder({ categories }: AICourseBuilderProps) {
   } | null>(null);
   const [showAddBlockMenu, setShowAddBlockMenu] = useState<number | null>(null);
 
+  // Custom confirmation dialog state
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    confirmText?: string;
+    cancelText?: string;
+    variant?: 'danger' | 'warning' | 'info';
+  } | null>(null);
+
   // Available block types for adding - organized by category
   const blockTypes = [
     // Text & Content
@@ -2792,9 +2894,15 @@ export function AICourseBuilder({ categories }: AICourseBuilderProps) {
                                       block,
                                     })}
                                     onDelete={() => {
-                                      if (confirm('Are you sure you want to delete this block?')) {
-                                        deleteBlock(globalLessonIndex, blockIdx);
-                                      }
+                                      setConfirmDialog({
+                                        isOpen: true,
+                                        title: 'Delete Block',
+                                        message: 'Are you sure you want to delete this block? This action cannot be undone.',
+                                        confirmText: 'Delete',
+                                        cancelText: 'Cancel',
+                                        variant: 'danger',
+                                        onConfirm: () => deleteBlock(globalLessonIndex, blockIdx),
+                                      });
                                     }}
                                     onMoveUp={() => moveBlock(globalLessonIndex, blockIdx, 'up')}
                                     onMoveDown={() => moveBlock(globalLessonIndex, blockIdx, 'down')}
@@ -2979,6 +3087,18 @@ export function AICourseBuilder({ categories }: AICourseBuilderProps) {
             onCancel={() => setEditingBlock(null)}
           />
         )}
+
+        {/* Confirmation Dialog */}
+        <ConfirmDialog
+          isOpen={confirmDialog?.isOpen ?? false}
+          title={confirmDialog?.title ?? ''}
+          message={confirmDialog?.message ?? ''}
+          confirmText={confirmDialog?.confirmText}
+          cancelText={confirmDialog?.cancelText}
+          variant={confirmDialog?.variant}
+          onConfirm={confirmDialog?.onConfirm ?? (() => {})}
+          onCancel={() => setConfirmDialog(null)}
+        />
       </div>
     );
   }
