@@ -42,6 +42,13 @@ export function AICourseBuilder({ categories }: AICourseBuilderProps) {
   const [outline, setOutline] = useState<Outline | null>(null);
   const [selectedCategory, setSelectedCategory] = useState('');
 
+  function safeUuid() {
+    if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+      return (crypto as any).randomUUID();
+    }
+    return `00000000-0000-4000-8000-${Math.random().toString(16).slice(2).padEnd(12, '0').slice(0, 12)}`;
+  }
+
   const handleGenerateOutline = async () => {
     if (!topic.trim()) {
       setError('Please enter a course topic');
@@ -91,17 +98,53 @@ export function AICourseBuilder({ categories }: AICourseBuilderProps) {
 
     setLoading(true);
     setError(null);
+    setStep('building');
 
     try {
-      // Create the course first
-      const courseResponse = await fetch('/api/super-admin/courses/create', {
+      // Persist course + outline structure via builder/save
+      const modules = (outline.modules || []).map((m, moduleIndex) => {
+        const moduleId = safeUuid();
+        return {
+          id: moduleId,
+          title: m.title,
+          description: m.description,
+          sort_order: moduleIndex,
+          lessons: (m.lessons || []).map((l, lessonIndex) => ({
+            id: safeUuid(),
+            title: l.title,
+            description: l.summary,
+            sort_order: lessonIndex,
+            duration_minutes: null,
+            content: {
+              blocks: [
+                {
+                  id: `block-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+                  type: 'text',
+                  data: {
+                    title: l.title,
+                    content: l.summary || '',
+                  },
+                  order: 0,
+                },
+              ],
+            },
+          })),
+        };
+      });
+
+      const courseResponse = await fetch('/api/super-admin/courses/builder/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title: outline.title,
-          description: outline.description,
-          category_id: selectedCategory,
-          original_prompt: topic,
+          metadata: {
+            title: outline.title,
+            description: outline.description,
+            category_id: selectedCategory,
+            is_active: true,
+            is_featured: false,
+            original_prompt: topic,
+          },
+          modules,
         }),
       });
 
@@ -110,12 +153,15 @@ export function AICourseBuilder({ categories }: AICourseBuilderProps) {
         throw new Error(data.error || 'Failed to create course');
       }
 
-      const { course } = await courseResponse.json();
+      const { courseId, course } = await courseResponse.json();
+      const id = courseId || course?.id;
+      if (!id) throw new Error('Course created but no course id returned');
 
-      // Redirect to course edit page where they can build modules/lessons
-      router.push(`/super-admin/courses/${course.id}/edit?ai_builder=true`);
+      // Redirect to preview so the generated structure is immediately visible.
+      router.push(`/super-admin/courses/${id}/preview`);
     } catch (err: any) {
       setError(err.message || 'Failed to create course');
+      setStep('outline');
       setLoading(false);
     }
   };

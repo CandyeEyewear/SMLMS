@@ -34,6 +34,7 @@ export async function POST(request: NextRequest) {
         category_id?: string;
         is_active?: boolean;
         is_featured?: boolean;
+        original_prompt?: string;
       };
       modules?: Array<{
         id: string;
@@ -96,6 +97,7 @@ export async function POST(request: NextRequest) {
           category_id: metadata.category_id || null,
           is_active: metadata.is_active ?? true,
           is_featured: metadata.is_featured ?? false,
+          original_prompt: metadata.original_prompt,
           updated_at: new Date().toISOString(),
         })
         .eq('id', courseId)
@@ -139,6 +141,7 @@ export async function POST(request: NextRequest) {
           category_id: metadata.category_id || null,
           is_active: metadata.is_active ?? true,
           is_featured: metadata.is_featured ?? false,
+          original_prompt: metadata.original_prompt,
         })
         .select()
         .single();
