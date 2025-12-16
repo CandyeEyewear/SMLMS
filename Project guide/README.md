@@ -124,7 +124,12 @@ The platform uses 33 PostgreSQL tables organized into:
 - **Billing** - payments, subscriptions
 - **Notifications** - email queue, reminders
 
-See `docs/lms_schema.sql` for the complete schema.
+Schema source of truth lives in:
+
+- `supabase/schema.sql` (base schema)
+- `supabase/migrations/*` (incremental changes)
+
+If you see API errors like `PGRST204` (missing column in schema cache), it usually means your Supabase project is missing a migration. For example, the admin UI expects `public.courses.is_active`, `public.courses.is_featured`, and `public.courses.original_prompt`.
 
 ## User Roles
 
