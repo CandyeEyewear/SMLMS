@@ -175,14 +175,17 @@ export async function POST(request: NextRequest) {
     }
 
     const moduleIds = moduleRows.map((m) => m.id);
-    const moduleIdList = `(${moduleIds.map((id) => `"${id}"`).join(',')})`;
 
     // Delete removed modules (and cascades lessons via FK)
-    await admin
-      .from('modules')
-      .delete()
-      .eq('course_id', course.id)
-      .not('id', 'in', moduleIdList);
+    // PostgREST expects `in.(a,b,c)`-style lists; values should not be quoted.
+    if (moduleIds.length > 0) {
+      const moduleIdList = `(${moduleIds.join(',')})`;
+      await admin
+        .from('modules')
+        .delete()
+        .eq('course_id', course.id)
+        .not('id', 'in', moduleIdList);
+    }
 
     const lessonRows = (modules || []).flatMap((m, mi) =>
       (m.lessons || []).map((l, li) => ({
@@ -210,14 +213,16 @@ export async function POST(request: NextRequest) {
     }
 
     const lessonIds = lessonRows.map((l) => l.id);
-    const lessonIdList = `(${lessonIds.map((id) => `"${id}"`).join(',')})`;
 
     // Delete removed lessons within remaining modules
-    await admin
-      .from('lessons')
-      .delete()
-      .in('module_id', moduleIds)
-      .not('id', 'in', lessonIdList);
+    if (moduleIds.length > 0 && lessonIds.length > 0) {
+      const lessonIdList = `(${lessonIds.join(',')})`;
+      await admin
+        .from('lessons')
+        .delete()
+        .in('module_id', moduleIds)
+        .not('id', 'in', lessonIdList);
+    }
 
     return NextResponse.json({
       success: true,
