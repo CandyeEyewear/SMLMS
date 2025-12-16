@@ -313,6 +313,10 @@ CREATE TABLE courses (
   original_prompt TEXT,
   passing_score INTEGER DEFAULT 70,
   settings JSONB DEFAULT '{}',
+  -- Used by Super Admin to activate/deactivate a course in the catalog
+  is_active BOOLEAN DEFAULT true,
+  -- Used for marketing/curation (featured courses)
+  is_featured BOOLEAN DEFAULT false,
   creation_source TEXT CHECK (creation_source IN ('direct', 'request')) DEFAULT 'direct',
   course_request_id UUID,
   is_published BOOLEAN DEFAULT false,

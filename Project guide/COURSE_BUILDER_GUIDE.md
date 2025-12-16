@@ -85,6 +85,9 @@ interface Course {
   // Settings
   passing_score: number;               // Default 70
   award_certificate: boolean;          // Default true
+  // Catalog visibility / curation
+  is_active: boolean;                  // Default true (Super Admin can deactivate)
+  is_featured: boolean;                // Default false
   is_published: boolean;
   published_at: string | null;
   
