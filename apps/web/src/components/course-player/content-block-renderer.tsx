@@ -31,6 +31,12 @@ export function ContentBlockRenderer({ blockType, content }: ContentBlockRendere
       return <ImageBlock content={content} />;
     case 'video':
       return <VideoBlock content={content} />;
+    case 'file':
+      return <FileBlock content={content} />;
+    case 'embed':
+      return <EmbedBlock content={content} />;
+    case 'quiz':
+      return <QuizBlock content={content} />;
     case 'checklist':
       return <ChecklistBlock content={content} />;
     case 'quote':
@@ -48,10 +54,27 @@ export function ContentBlockRenderer({ blockType, content }: ContentBlockRendere
   }
 }
 
-function TextBlock({ content }: { content: { text: string } }) {
+function escapeHtml(input: string) {
+  return input
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function toSafeHtmlText(raw: string) {
+  // Render as plain text (escaped) while preserving newlines.
+  return escapeHtml(raw).replace(/\n/g, '<br />');
+}
+
+function TextBlock({ content }: { content: { text?: string; content?: string; title?: string } }) {
+  const title = typeof content?.title === 'string' ? content.title : '';
+  const raw = typeof content?.text === 'string' ? content.text : (typeof content?.content === 'string' ? content.content : '');
   return (
     <div className="prose max-w-none">
-      <div dangerouslySetInnerHTML={{ __html: content.text.replace(/\n/g, '<br />') }} />
+      {title ? <h3 className="text-lg font-semibold text-gray-900 mb-3">{title}</h3> : null}
+      <div dangerouslySetInnerHTML={{ __html: toSafeHtmlText(raw) }} />
     </div>
   );
 }
@@ -282,8 +305,57 @@ function VideoBlock({ content }: { content: { url: string; title?: string; thumb
     <div>
       {content.title && <h4 className="font-semibold text-gray-900 mb-2">{content.title}</h4>}
       <div className="aspect-video bg-gray-200 rounded-lg overflow-hidden">
-        <video src={content.url} controls className="w-full h-full" />
+        {typeof content.url === 'string' && content.url.trim().startsWith('<') ? (
+          <div className="w-full h-full" dangerouslySetInnerHTML={{ __html: content.url }} />
+        ) : (
+          <video src={content.url} controls className="w-full h-full" />
+        )}
       </div>
+    </div>
+  );
+}
+
+function FileBlock({ content }: { content: { url?: string; title?: string; description?: string } }) {
+  return (
+    <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="font-semibold text-gray-900 truncate">{content.title || 'File'}</p>
+          {content.description ? <p className="text-sm text-gray-600 mt-1">{content.description}</p> : null}
+        </div>
+        {content.url ? (
+          <a
+            href={content.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="shrink-0 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100"
+          >
+            Download
+          </a>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function EmbedBlock({ content }: { content: { embedCode?: string; title?: string } }) {
+  return (
+    <div>
+      {content.title ? <h4 className="font-semibold text-gray-900 mb-2">{content.title}</h4> : null}
+      {content.embedCode ? (
+        <div className="border border-gray-200 rounded-lg overflow-hidden" dangerouslySetInnerHTML={{ __html: content.embedCode }} />
+      ) : (
+        <div className="text-gray-500 italic">No embed provided.</div>
+      )}
+    </div>
+  );
+}
+
+function QuizBlock({ content }: { content: { title?: string } }) {
+  return (
+    <div className="border border-accent-200 bg-accent-50 rounded-lg p-4">
+      <p className="font-semibold text-gray-900">{content.title || 'Quiz'}</p>
+      <p className="text-sm text-gray-700 mt-1">This quiz will be available to learners in the quiz section.</p>
     </div>
   );
 }
