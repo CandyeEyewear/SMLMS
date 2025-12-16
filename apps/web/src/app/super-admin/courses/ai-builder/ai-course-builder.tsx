@@ -86,6 +86,31 @@ function generateBlockId() {
   return `block-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+function getDefaultContentForBlockType(blockType: string): Record<string, unknown> {
+  switch (blockType) {
+    case 'text':
+      return { text: '' };
+    case 'bullet_list':
+      return { title: '', items: [''] };
+    case 'numbered_steps':
+      return { title: '', steps: [{ title: '', description: '' }] };
+    case 'callout':
+      return { type: 'tip', title: '', text: '' };
+    case 'accordion':
+      return { title: '', sections: [{ title: '', content: '' }] };
+    case 'table':
+      return { title: '', headers: ['Column 1', 'Column 2'], rows: [['', '']] };
+    case 'comparison':
+      return {
+        title: '',
+        left: { label: 'Do', items: [''] },
+        right: { label: "Don't", items: [''] },
+      };
+    default:
+      return {};
+  }
+}
+
 // ============================================================================
 // STEP INDICATOR COMPONENT
 // ============================================================================
@@ -167,7 +192,27 @@ function ProgressBar({ current, total, label }: { current: number; total: number
 // CONTENT BLOCK PREVIEW COMPONENT
 // ============================================================================
 
-function BlockPreview({ block }: { block: ContentBlock }) {
+interface BlockPreviewProps {
+  block: ContentBlock;
+  blockIndex: number;
+  totalBlocks: number;
+  onEdit?: () => void;
+  onDelete?: () => void;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  editable?: boolean;
+}
+
+function BlockPreview({
+  block,
+  blockIndex,
+  totalBlocks,
+  onEdit,
+  onDelete,
+  onMoveUp,
+  onMoveDown,
+  editable = false,
+}: BlockPreviewProps) {
   const { block_type, content } = block;
 
   const renderContent = () => {
@@ -340,9 +385,46 @@ function BlockPreview({ block }: { block: ContentBlock }) {
   };
 
   return (
-    <div className="p-4 bg-white border border-gray-200 rounded-lg">
-      <div className="flex items-center gap-2 mb-3 text-xs text-gray-500">
-        <span className="px-2 py-1 bg-gray-100 rounded font-mono">{block_type}</span>
+    <div className="p-4 bg-white border border-gray-200 rounded-lg group hover:border-gray-300 transition-colors">
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <div className="flex items-center gap-2 text-xs text-gray-500">
+          <span className="px-2 py-1 bg-gray-100 rounded font-mono">{block_type}</span>
+          <span className="text-gray-400">Block {blockIndex + 1} of {totalBlocks}</span>
+        </div>
+        {editable && (
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button
+              onClick={onMoveUp}
+              disabled={blockIndex === 0}
+              className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded disabled:opacity-30 disabled:cursor-not-allowed"
+              title="Move up"
+            >
+              ↑
+            </button>
+            <button
+              onClick={onMoveDown}
+              disabled={blockIndex === totalBlocks - 1}
+              className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded disabled:opacity-30 disabled:cursor-not-allowed"
+              title="Move down"
+            >
+              ↓
+            </button>
+            <button
+              onClick={onEdit}
+              className="p-1.5 text-primary-500 hover:text-primary-600 hover:bg-primary-50 rounded"
+              title="Edit block"
+            >
+              ✏️
+            </button>
+            <button
+              onClick={onDelete}
+              className="p-1.5 text-red-500 hover:text-red-600 hover:bg-red-50 rounded"
+              title="Delete block"
+            >
+              🗑️
+            </button>
+          </div>
+        )}
       </div>
       {renderContent()}
     </div>
@@ -473,6 +555,484 @@ function QuestionPreview({ question, index }: { question: QuizQuestion; index: n
 }
 
 // ============================================================================
+// BLOCK EDITOR MODAL COMPONENT
+// ============================================================================
+
+interface BlockEditorProps {
+  block: ContentBlock;
+  onSave: (content: Record<string, unknown>) => void;
+  onCancel: () => void;
+}
+
+function BlockEditor({ block, onSave, onCancel }: BlockEditorProps) {
+  const [content, setContent] = useState<Record<string, unknown>>(block.content);
+
+  const updateContent = (key: string, value: unknown) => {
+    setContent(prev => ({ ...prev, [key]: value }));
+  };
+
+  const renderEditor = () => {
+    switch (block.block_type) {
+      case 'text':
+        return (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Text Content</label>
+            <textarea
+              value={(content.text as string) || ''}
+              onChange={(e) => updateContent('text', e.target.value)}
+              rows={6}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              placeholder="Enter your text content..."
+            />
+          </div>
+        );
+
+      case 'bullet_list':
+        const bulletItems = (content.items as string[]) || [''];
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Title (optional)</label>
+              <input
+                type="text"
+                value={(content.title as string) || ''}
+                onChange={(e) => updateContent('title', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                placeholder="List title..."
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Items</label>
+              {bulletItems.map((item, idx) => (
+                <div key={idx} className="flex gap-2 mb-2">
+                  <input
+                    type="text"
+                    value={item}
+                    onChange={(e) => {
+                      const newItems = [...bulletItems];
+                      newItems[idx] = e.target.value;
+                      updateContent('items', newItems);
+                    }}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                    placeholder={`Item ${idx + 1}...`}
+                  />
+                  <button
+                    onClick={() => updateContent('items', bulletItems.filter((_, i) => i !== idx))}
+                    className="px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg"
+                    disabled={bulletItems.length <= 1}
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+              <button
+                onClick={() => updateContent('items', [...bulletItems, ''])}
+                className="text-sm text-primary-600 hover:text-primary-700"
+              >
+                + Add item
+              </button>
+            </div>
+          </div>
+        );
+
+      case 'numbered_steps':
+        const steps = (content.steps as Array<{ title: string; description: string }>) || [{ title: '', description: '' }];
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Title (optional)</label>
+              <input
+                type="text"
+                value={(content.title as string) || ''}
+                onChange={(e) => updateContent('title', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                placeholder="Steps title..."
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Steps</label>
+              {steps.map((step, idx) => (
+                <div key={idx} className="p-3 border border-gray-200 rounded-lg mb-2">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="w-6 h-6 bg-primary-100 text-primary-700 rounded-full flex items-center justify-center text-sm font-medium">
+                      {idx + 1}
+                    </span>
+                    <input
+                      type="text"
+                      value={step.title}
+                      onChange={(e) => {
+                        const newSteps = [...steps];
+                        newSteps[idx] = { ...newSteps[idx], title: e.target.value };
+                        updateContent('steps', newSteps);
+                      }}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                      placeholder="Step title..."
+                    />
+                    <button
+                      onClick={() => updateContent('steps', steps.filter((_, i) => i !== idx))}
+                      className="px-2 py-1 text-red-600 hover:bg-red-50 rounded"
+                      disabled={steps.length <= 1}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <textarea
+                    value={step.description}
+                    onChange={(e) => {
+                      const newSteps = [...steps];
+                      newSteps[idx] = { ...newSteps[idx], description: e.target.value };
+                      updateContent('steps', newSteps);
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                    placeholder="Step description..."
+                    rows={2}
+                  />
+                </div>
+              ))}
+              <button
+                onClick={() => updateContent('steps', [...steps, { title: '', description: '' }])}
+                className="text-sm text-primary-600 hover:text-primary-700"
+              >
+                + Add step
+              </button>
+            </div>
+          </div>
+        );
+
+      case 'callout':
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Type</label>
+              <select
+                value={(content.type as string) || 'tip'}
+                onChange={(e) => updateContent('type', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+              >
+                <option value="tip">Tip</option>
+                <option value="note">Note</option>
+                <option value="warning">Warning</option>
+                <option value="danger">Danger</option>
+                <option value="info">Info</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Title (optional)</label>
+              <input
+                type="text"
+                value={(content.title as string) || ''}
+                onChange={(e) => updateContent('title', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                placeholder="Callout title..."
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Text</label>
+              <textarea
+                value={(content.text as string) || ''}
+                onChange={(e) => updateContent('text', e.target.value)}
+                rows={4}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                placeholder="Callout content..."
+              />
+            </div>
+          </div>
+        );
+
+      case 'accordion':
+        const sections = (content.sections as Array<{ title: string; content: string }>) || [{ title: '', content: '' }];
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Accordion Title (optional)</label>
+              <input
+                type="text"
+                value={(content.title as string) || ''}
+                onChange={(e) => updateContent('title', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                placeholder="Accordion title..."
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Sections</label>
+              {sections.map((section, idx) => (
+                <div key={idx} className="p-3 border border-gray-200 rounded-lg mb-2">
+                  <div className="flex gap-2 mb-2">
+                    <input
+                      type="text"
+                      value={section.title}
+                      onChange={(e) => {
+                        const newSections = [...sections];
+                        newSections[idx] = { ...newSections[idx], title: e.target.value };
+                        updateContent('sections', newSections);
+                      }}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                      placeholder="Section title..."
+                    />
+                    <button
+                      onClick={() => updateContent('sections', sections.filter((_, i) => i !== idx))}
+                      className="px-2 py-1 text-red-600 hover:bg-red-50 rounded"
+                      disabled={sections.length <= 1}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <textarea
+                    value={section.content}
+                    onChange={(e) => {
+                      const newSections = [...sections];
+                      newSections[idx] = { ...newSections[idx], content: e.target.value };
+                      updateContent('sections', newSections);
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                    placeholder="Section content..."
+                    rows={3}
+                  />
+                </div>
+              ))}
+              <button
+                onClick={() => updateContent('sections', [...sections, { title: '', content: '' }])}
+                className="text-sm text-primary-600 hover:text-primary-700"
+              >
+                + Add section
+              </button>
+            </div>
+          </div>
+        );
+
+      case 'table':
+        const headers = (content.headers as string[]) || ['Column 1', 'Column 2'];
+        const rows = (content.rows as string[][]) || [['', '']];
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Table Title (optional)</label>
+              <input
+                type="text"
+                value={(content.title as string) || ''}
+                onChange={(e) => updateContent('title', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                placeholder="Table title..."
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Headers</label>
+              <div className="flex gap-2 flex-wrap">
+                {headers.map((header, idx) => (
+                  <input
+                    key={idx}
+                    type="text"
+                    value={header}
+                    onChange={(e) => {
+                      const newHeaders = [...headers];
+                      newHeaders[idx] = e.target.value;
+                      updateContent('headers', newHeaders);
+                    }}
+                    className="flex-1 min-w-[120px] px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                    placeholder={`Column ${idx + 1}`}
+                  />
+                ))}
+                <button
+                  onClick={() => {
+                    updateContent('headers', [...headers, `Column ${headers.length + 1}`]);
+                    updateContent('rows', rows.map(row => [...row, '']));
+                  }}
+                  className="px-3 py-2 text-primary-600 border border-primary-300 rounded-lg hover:bg-primary-50"
+                >
+                  + Column
+                </button>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Rows</label>
+              {rows.map((row, rowIdx) => (
+                <div key={rowIdx} className="flex gap-2 mb-2 items-center">
+                  {row.map((cell, cellIdx) => (
+                    <input
+                      key={cellIdx}
+                      type="text"
+                      value={cell}
+                      onChange={(e) => {
+                        const newRows = rows.map((r, ri) =>
+                          ri === rowIdx ? r.map((c, ci) => ci === cellIdx ? e.target.value : c) : r
+                        );
+                        updateContent('rows', newRows);
+                      }}
+                      className="flex-1 min-w-[120px] px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                      placeholder={`Row ${rowIdx + 1}, Col ${cellIdx + 1}`}
+                    />
+                  ))}
+                  <button
+                    onClick={() => updateContent('rows', rows.filter((_, i) => i !== rowIdx))}
+                    className="px-2 py-1 text-red-600 hover:bg-red-50 rounded"
+                    disabled={rows.length <= 1}
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+              <button
+                onClick={() => updateContent('rows', [...rows, headers.map(() => '')])}
+                className="text-sm text-primary-600 hover:text-primary-700"
+              >
+                + Add row
+              </button>
+            </div>
+          </div>
+        );
+
+      case 'comparison':
+        const left = (content.left as { label: string; items: string[] }) || { label: 'Do', items: [''] };
+        const right = (content.right as { label: string; items: string[] }) || { label: "Don't", items: [''] };
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Comparison Title (optional)</label>
+              <input
+                type="text"
+                value={(content.title as string) || ''}
+                onChange={(e) => updateContent('title', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                placeholder="Comparison title..."
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="p-3 bg-green-50 rounded-lg">
+                <input
+                  type="text"
+                  value={left.label}
+                  onChange={(e) => updateContent('left', { ...left, label: e.target.value })}
+                  className="w-full px-3 py-2 border border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 mb-2 bg-white"
+                  placeholder="Left column label..."
+                />
+                {left.items.map((item, idx) => (
+                  <div key={idx} className="flex gap-2 mb-2">
+                    <input
+                      type="text"
+                      value={item}
+                      onChange={(e) => {
+                        const newItems = [...left.items];
+                        newItems[idx] = e.target.value;
+                        updateContent('left', { ...left, items: newItems });
+                      }}
+                      className="flex-1 px-3 py-2 border border-green-300 rounded-lg bg-white"
+                      placeholder={`Item ${idx + 1}...`}
+                    />
+                    <button
+                      onClick={() => updateContent('left', { ...left, items: left.items.filter((_, i) => i !== idx) })}
+                      className="px-2 py-1 text-red-600 hover:bg-red-50 rounded"
+                      disabled={left.items.length <= 1}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+                <button
+                  onClick={() => updateContent('left', { ...left, items: [...left.items, ''] })}
+                  className="text-sm text-green-700 hover:text-green-800"
+                >
+                  + Add item
+                </button>
+              </div>
+              <div className="p-3 bg-red-50 rounded-lg">
+                <input
+                  type="text"
+                  value={right.label}
+                  onChange={(e) => updateContent('right', { ...right, label: e.target.value })}
+                  className="w-full px-3 py-2 border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500 mb-2 bg-white"
+                  placeholder="Right column label..."
+                />
+                {right.items.map((item, idx) => (
+                  <div key={idx} className="flex gap-2 mb-2">
+                    <input
+                      type="text"
+                      value={item}
+                      onChange={(e) => {
+                        const newItems = [...right.items];
+                        newItems[idx] = e.target.value;
+                        updateContent('right', { ...right, items: newItems });
+                      }}
+                      className="flex-1 px-3 py-2 border border-red-300 rounded-lg bg-white"
+                      placeholder={`Item ${idx + 1}...`}
+                    />
+                    <button
+                      onClick={() => updateContent('right', { ...right, items: right.items.filter((_, i) => i !== idx) })}
+                      className="px-2 py-1 text-red-600 hover:bg-red-50 rounded"
+                      disabled={right.items.length <= 1}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+                <button
+                  onClick={() => updateContent('right', { ...right, items: [...right.items, ''] })}
+                  className="text-sm text-red-700 hover:text-red-800"
+                >
+                  + Add item
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+
+      default:
+        return (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Raw JSON Content</label>
+            <textarea
+              value={JSON.stringify(content, null, 2)}
+              onChange={(e) => {
+                try {
+                  setContent(JSON.parse(e.target.value));
+                } catch {
+                  // Invalid JSON, ignore
+                }
+              }}
+              rows={10}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono text-sm"
+            />
+          </div>
+        );
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900">Edit Block</h3>
+            <p className="text-sm text-gray-500">
+              Block type: <span className="font-mono bg-gray-100 px-2 py-0.5 rounded">{block.block_type}</span>
+            </p>
+          </div>
+          <button onClick={onCancel} className="text-gray-400 hover:text-gray-600 text-2xl">
+            ✕
+          </button>
+        </div>
+        <div className="p-4 overflow-y-auto flex-1">
+          {renderEditor()}
+        </div>
+        <div className="p-4 border-t border-gray-200 flex gap-3 justify-end">
+          <button
+            onClick={onCancel}
+            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => onSave(content)}
+            className="px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600"
+          >
+            Save Changes
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
 // MAIN COMPONENT
 // ============================================================================
 
@@ -509,6 +1069,96 @@ export function AICourseBuilder({ categories }: AICourseBuilderProps) {
   // Step 4: Review state
   const [expandedModules, setExpandedModules] = useState<Set<number>>(new Set([0]));
   const [expandedLessons, setExpandedLessons] = useState<Set<string>>(new Set());
+
+  // Block editing state
+  const [editingBlock, setEditingBlock] = useState<{
+    lessonIndex: number;
+    blockIndex: number;
+    block: ContentBlock;
+  } | null>(null);
+  const [showAddBlockMenu, setShowAddBlockMenu] = useState<number | null>(null);
+
+  // Available block types for adding
+  const blockTypes = [
+    { type: 'text', label: 'Text', icon: '📝' },
+    { type: 'bullet_list', label: 'Bullet List', icon: '•' },
+    { type: 'numbered_steps', label: 'Numbered Steps', icon: '1️⃣' },
+    { type: 'callout', label: 'Callout', icon: '💡' },
+    { type: 'accordion', label: 'Accordion', icon: '📂' },
+    { type: 'table', label: 'Table', icon: '📊' },
+    { type: 'comparison', label: 'Comparison', icon: '⚖️' },
+  ];
+
+  // ============================================================================
+  // BLOCK EDITING FUNCTIONS
+  // ============================================================================
+
+  const updateBlock = useCallback((lessonIndex: number, blockIndex: number, updates: Partial<ContentBlock>) => {
+    setGeneratedLessons(prev => prev.map((lesson, lIdx) => {
+      if (lIdx !== lessonIndex) return lesson;
+      return {
+        ...lesson,
+        blocks: lesson.blocks.map((block, bIdx) => {
+          if (bIdx !== blockIndex) return block;
+          return { ...block, ...updates };
+        }),
+      };
+    }));
+  }, []);
+
+  const deleteBlock = useCallback((lessonIndex: number, blockIndex: number) => {
+    setGeneratedLessons(prev => prev.map((lesson, lIdx) => {
+      if (lIdx !== lessonIndex) return lesson;
+      return {
+        ...lesson,
+        blocks: lesson.blocks.filter((_, bIdx) => bIdx !== blockIndex)
+          .map((block, idx) => ({ ...block, sort_order: idx })),
+      };
+    }));
+  }, []);
+
+  const addBlock = useCallback((lessonIndex: number, blockType: string) => {
+    const newBlock: ContentBlock = {
+      id: generateBlockId(),
+      block_type: blockType,
+      content: getDefaultContentForBlockType(blockType),
+      sort_order: 0,
+    };
+
+    setGeneratedLessons(prev => prev.map((lesson, lIdx) => {
+      if (lIdx !== lessonIndex) return lesson;
+      const newBlocks = [...lesson.blocks, newBlock].map((block, idx) => ({
+        ...block,
+        sort_order: idx,
+      }));
+      return { ...lesson, blocks: newBlocks };
+    }));
+
+    setShowAddBlockMenu(null);
+
+    // Open editor for the new block
+    const lesson = generatedLessons[lessonIndex];
+    setEditingBlock({
+      lessonIndex,
+      blockIndex: lesson.blocks.length, // New block is at the end
+      block: newBlock,
+    });
+  }, [generatedLessons]);
+
+  const moveBlock = useCallback((lessonIndex: number, blockIndex: number, direction: 'up' | 'down') => {
+    setGeneratedLessons(prev => prev.map((lesson, lIdx) => {
+      if (lIdx !== lessonIndex) return lesson;
+      const blocks = [...lesson.blocks];
+      const newIndex = direction === 'up' ? blockIndex - 1 : blockIndex + 1;
+      if (newIndex < 0 || newIndex >= blocks.length) return lesson;
+
+      [blocks[blockIndex], blocks[newIndex]] = [blocks[newIndex], blocks[blockIndex]];
+      return {
+        ...lesson,
+        blocks: blocks.map((block, idx) => ({ ...block, sort_order: idx })),
+      };
+    }));
+  }, []);
 
   // ============================================================================
   // STEP 1: Generate Outline
@@ -1402,7 +2052,7 @@ export function AICourseBuilder({ categories }: AICourseBuilderProps) {
           </button>
           <h1 className="text-3xl font-bold text-gray-900">Review & Publish</h1>
           <p className="text-gray-600 mt-2">
-            Review all generated content. You can regenerate individual lessons or quizzes if needed.
+            Review and edit the generated content. Add, remove, or modify blocks. Regenerate lessons or quizzes as needed.
           </p>
         </div>
 
@@ -1515,11 +2165,58 @@ export function AICourseBuilder({ categories }: AICourseBuilderProps) {
                             <div className="px-4 py-4 bg-gray-50 space-y-3">
                               {lesson.blocks.length > 0 ? (
                                 lesson.blocks.map((block, blockIdx) => (
-                                  <BlockPreview key={block.id || blockIdx} block={block} />
+                                  <BlockPreview
+                                    key={block.id || blockIdx}
+                                    block={block}
+                                    blockIndex={blockIdx}
+                                    totalBlocks={lesson.blocks.length}
+                                    editable={true}
+                                    onEdit={() => setEditingBlock({
+                                      lessonIndex: globalLessonIndex,
+                                      blockIndex: blockIdx,
+                                      block,
+                                    })}
+                                    onDelete={() => {
+                                      if (confirm('Are you sure you want to delete this block?')) {
+                                        deleteBlock(globalLessonIndex, blockIdx);
+                                      }
+                                    }}
+                                    onMoveUp={() => moveBlock(globalLessonIndex, blockIdx, 'up')}
+                                    onMoveDown={() => moveBlock(globalLessonIndex, blockIdx, 'down')}
+                                  />
                                 ))
                               ) : (
                                 <p className="text-sm text-gray-500 italic">No content generated yet</p>
                               )}
+
+                              {/* Add Block Button */}
+                              <div className="relative">
+                                <button
+                                  onClick={() => setShowAddBlockMenu(showAddBlockMenu === globalLessonIndex ? null : globalLessonIndex)}
+                                  className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-primary-400 hover:text-primary-600 hover:bg-primary-50 transition-colors flex items-center justify-center gap-2"
+                                >
+                                  <span className="text-xl">+</span>
+                                  <span className="text-sm font-medium">Add Block</span>
+                                </button>
+
+                                {showAddBlockMenu === globalLessonIndex && (
+                                  <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-lg border border-gray-200 p-2 z-10">
+                                    <p className="text-xs text-gray-500 px-2 py-1 mb-1">Select block type:</p>
+                                    <div className="grid grid-cols-2 gap-1">
+                                      {blockTypes.map((bt) => (
+                                        <button
+                                          key={bt.type}
+                                          onClick={() => addBlock(globalLessonIndex, bt.type)}
+                                          className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg text-left"
+                                        >
+                                          <span>{bt.icon}</span>
+                                          <span>{bt.label}</span>
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
 
                               {/* Media Suggestions */}
                               {lesson.suggestedMedia && lesson.suggestedMedia.length > 0 && (
@@ -1612,6 +2309,18 @@ export function AICourseBuilder({ categories }: AICourseBuilderProps) {
             </button>
           </div>
         </div>
+
+        {/* Block Editor Modal */}
+        {editingBlock && (
+          <BlockEditor
+            block={editingBlock.block}
+            onSave={(newContent) => {
+              updateBlock(editingBlock.lessonIndex, editingBlock.blockIndex, { content: newContent });
+              setEditingBlock(null);
+            }}
+            onCancel={() => setEditingBlock(null)}
+          />
+        )}
       </div>
     );
   }
