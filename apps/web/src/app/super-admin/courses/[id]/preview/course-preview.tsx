@@ -6,7 +6,7 @@ import { ContentBlock } from '../../new/builder/content-block';
 
 type Block = {
   id: string;
-  type: 'video' | 'image' | 'text' | 'quiz' | 'file' | 'embed';
+  type: string;
   data: any;
   order: number;
 };
