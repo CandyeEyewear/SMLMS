@@ -2453,14 +2453,29 @@ export function AICourseBuilder({ categories }: AICourseBuilderProps) {
         }),
       });
 
+      const responseData = await courseResponse.json();
+
       if (!courseResponse.ok) {
-        const data = await courseResponse.json();
-        throw new Error(data.error || 'Failed to create course');
+        const errorDetails = responseData.details
+          ? (typeof responseData.details === 'string' ? responseData.details : JSON.stringify(responseData.details))
+          : '';
+        throw new Error(`${responseData.error || 'Failed to create course'}${errorDetails ? `: ${errorDetails}` : ''}`);
       }
 
-      const { courseId, course } = await courseResponse.json();
+      const { courseId, course, summary } = responseData;
       const id = courseId || course?.id;
-      if (!id) throw new Error('Course created but no course id returned');
+
+      if (!id) {
+        throw new Error('Course created but no course ID returned from server');
+      }
+
+      // Log success details for debugging
+      console.log('Course saved successfully:', {
+        courseId: id,
+        courseTitle: course?.title,
+        modulesCreated: summary?.modulesCreated,
+        lessonsCreated: summary?.lessonsCreated,
+      });
 
       // TODO: Save quizzes to database (requires quiz API endpoint)
 
@@ -2469,6 +2484,7 @@ export function AICourseBuilder({ categories }: AICourseBuilderProps) {
       setStep('success');
       setLoading(false);
     } catch (err: unknown) {
+      console.error('Course creation failed:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to create course';
       setError(errorMessage);
       setStep('review');

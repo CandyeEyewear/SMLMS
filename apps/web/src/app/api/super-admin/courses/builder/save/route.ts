@@ -313,10 +313,51 @@ export async function POST(request: NextRequest) {
         .not('id', 'in', lessonIdList);
     }
 
+    // Verify the course was saved by reading it back
+    const { data: verifiedCourse, error: verifyError } = await admin
+      .from('courses')
+      .select('id, title')
+      .eq('id', course.id)
+      .single();
+
+    if (verifyError || !verifiedCourse) {
+      console.error('Course verification failed:', verifyError);
+      return NextResponse.json(
+        { error: 'Course was not saved correctly', details: verifyError?.message || 'Course not found after save' },
+        { status: 500 }
+      );
+    }
+
+    // Verify modules were saved
+    const { data: verifiedModules, error: modulesVerifyError } = await admin
+      .from('modules')
+      .select('id')
+      .eq('course_id', course.id);
+
+    if (modulesVerifyError) {
+      console.error('Modules verification failed:', modulesVerifyError);
+    }
+
+    // Verify lessons were saved
+    const { data: verifiedLessons, error: lessonsVerifyError } = await admin
+      .from('lessons')
+      .select('id')
+      .in('module_id', moduleIds);
+
+    if (lessonsVerifyError) {
+      console.error('Lessons verification failed:', lessonsVerifyError);
+    }
+
+    console.log(`Course ${course.id} saved successfully with ${verifiedModules?.length || 0} modules and ${verifiedLessons?.length || 0} lessons`);
+
     return NextResponse.json({
       success: true,
       courseId: course.id,
-      course,
+      course: verifiedCourse,
+      summary: {
+        modulesCreated: verifiedModules?.length || 0,
+        lessonsCreated: verifiedLessons?.length || 0,
+      },
     });
   } catch (error) {
     const formatted = formatUnknownError(error);
