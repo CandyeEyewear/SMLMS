@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { redirect, notFound } from 'next/navigation';
 import Link from 'next/link';
 import { LessonPlayer } from './lesson-player';
+import { normalizeLessonBlocks } from '@/lib/course-content';
 
 type LessonBlockType = {
   id: string;
@@ -22,7 +23,7 @@ type LessonType = {
       title: string;
     };
   };
-  blocks: LessonBlockType[];
+  content?: any;
 };
 
 export default async function LessonPage({
@@ -57,6 +58,7 @@ export default async function LessonPage({
     .select(`
       id,
       title,
+      content,
       module:modules(
         id,
         title,
@@ -64,12 +66,6 @@ export default async function LessonPage({
           id,
           title
         )
-      ),
-      blocks:lesson_blocks(
-        id,
-        block_type,
-        content,
-        sort_order
       )
     `)
     .eq('id', lessonId)
@@ -99,9 +95,7 @@ export default async function LessonPage({
     .eq('module_id', lesson.module.id)
     .single();
 
-  const sortedBlocks = (lesson.blocks || []).sort(
-    (a, b) => a.sort_order - b.sort_order
-  ) as LessonBlockType[];
+  const sortedBlocks = normalizeLessonBlocks(lesson?.content).sort((a, b) => a.sort_order - b.sort_order) as LessonBlockType[];
 
   return (
     <LessonPlayer

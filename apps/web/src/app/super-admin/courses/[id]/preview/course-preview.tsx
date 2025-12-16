@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ContentBlock } from '../../new/builder/content-block';
+import { ContentBlockRenderer } from '@/components/course-player/content-block-renderer';
+import { normalizeLessonBlocks } from '@/lib/course-content';
 
 type Block = {
   id: string;
@@ -62,6 +63,10 @@ export function CoursePreview({
   const blocks: Block[] = useMemo(() => {
     const raw = selected?.lesson.content?.blocks || [];
     return [...raw].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  }, [selected]);
+
+  const normalizedBlocks = useMemo(() => {
+    return normalizeLessonBlocks(selected?.lesson.content).sort((a, b) => a.sort_order - b.sort_order);
   }, [selected]);
 
   return (
@@ -144,16 +149,11 @@ export function CoursePreview({
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {blocks.map((block) => (
+                  {normalizedBlocks.map((block) => (
                     <div key={block.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                      <ContentBlock
-                        block={block as any}
-                        isSelected={false}
-                        onSelect={() => {}}
-                        onUpdate={() => {}}
-                        onDelete={() => {}}
-                        onDuplicate={() => {}}
-                      />
+                      <div className="p-6">
+                        <ContentBlockRenderer blockType={block.block_type} content={block.content} />
+                      </div>
                     </div>
                   ))}
                 </div>
