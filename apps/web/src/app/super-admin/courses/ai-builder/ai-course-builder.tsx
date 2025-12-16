@@ -95,10 +95,20 @@ function getDefaultContentForBlockType(blockType: string): Record<string, unknow
       return { title: '', items: [''] };
     case 'numbered_steps':
       return { title: '', steps: [{ title: '', description: '' }] };
+    case 'quote':
+      return { text: '', author: '', source: '' };
+    case 'code':
+      return { language: 'javascript', code: '', title: '' };
     case 'callout':
       return { type: 'tip', title: '', text: '' };
     case 'accordion':
       return { title: '', sections: [{ title: '', content: '' }] };
+    case 'tabs':
+      return { tabs: [{ title: 'Tab 1', content: '' }] };
+    case 'flashcard':
+      return { cards: [{ front: '', back: '' }] };
+    case 'checklist':
+      return { title: '', items: [{ text: '', checked: false }] };
     case 'table':
       return { title: '', headers: ['Column 1', 'Column 2'], rows: [['', '']] };
     case 'comparison':
@@ -107,6 +117,18 @@ function getDefaultContentForBlockType(blockType: string): Record<string, unknow
         left: { label: 'Do', items: [''] },
         right: { label: "Don't", items: [''] },
       };
+    case 'timeline':
+      return { title: '', events: [{ date: '', title: '', description: '' }] };
+    case 'glossary':
+      return { title: '', terms: [{ term: '', definition: '' }] };
+    case 'image':
+      return { url: '', alt: '', caption: '' };
+    case 'video':
+      return { url: '', title: '', description: '' };
+    case 'file':
+      return { url: '', title: '', description: '', fileType: '' };
+    case 'embed':
+      return { url: '', title: '', embedType: 'iframe' };
     default:
       return {};
   }
@@ -976,6 +998,556 @@ function BlockEditor({ block, onSave, onCancel }: BlockEditorProps) {
           </div>
         );
 
+      case 'quote':
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Quote Text</label>
+              <textarea
+                value={(content.text as string) || ''}
+                onChange={(e) => updateContent('text', e.target.value)}
+                rows={4}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                placeholder="Enter the quote..."
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Author</label>
+                <input
+                  type="text"
+                  value={(content.author as string) || ''}
+                  onChange={(e) => updateContent('author', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                  placeholder="Author name..."
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Source (optional)</label>
+                <input
+                  type="text"
+                  value={(content.source as string) || ''}
+                  onChange={(e) => updateContent('source', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                  placeholder="Book, article, etc..."
+                />
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'code':
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Title (optional)</label>
+              <input
+                type="text"
+                value={(content.title as string) || ''}
+                onChange={(e) => updateContent('title', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                placeholder="Code snippet title..."
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Language</label>
+              <select
+                value={(content.language as string) || 'javascript'}
+                onChange={(e) => updateContent('language', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+              >
+                <option value="javascript">JavaScript</option>
+                <option value="typescript">TypeScript</option>
+                <option value="python">Python</option>
+                <option value="html">HTML</option>
+                <option value="css">CSS</option>
+                <option value="sql">SQL</option>
+                <option value="bash">Bash</option>
+                <option value="json">JSON</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Code</label>
+              <textarea
+                value={(content.code as string) || ''}
+                onChange={(e) => updateContent('code', e.target.value)}
+                rows={10}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-primary-500"
+                placeholder="// Enter your code here..."
+              />
+            </div>
+          </div>
+        );
+
+      case 'tabs':
+        const tabs = (content.tabs as Array<{ title: string; content: string }>) || [{ title: 'Tab 1', content: '' }];
+        return (
+          <div className="space-y-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Tabs</label>
+            {tabs.map((tab, idx) => (
+              <div key={idx} className="p-3 border border-gray-200 rounded-lg">
+                <div className="flex gap-2 mb-2">
+                  <input
+                    type="text"
+                    value={tab.title}
+                    onChange={(e) => {
+                      const newTabs = [...tabs];
+                      newTabs[idx] = { ...newTabs[idx], title: e.target.value };
+                      updateContent('tabs', newTabs);
+                    }}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                    placeholder="Tab title..."
+                  />
+                  <button
+                    onClick={() => updateContent('tabs', tabs.filter((_, i) => i !== idx))}
+                    className="px-2 py-1 text-red-600 hover:bg-red-50 rounded"
+                    disabled={tabs.length <= 1}
+                  >
+                    ✕
+                  </button>
+                </div>
+                <textarea
+                  value={tab.content}
+                  onChange={(e) => {
+                    const newTabs = [...tabs];
+                    newTabs[idx] = { ...newTabs[idx], content: e.target.value };
+                    updateContent('tabs', newTabs);
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                  placeholder="Tab content..."
+                  rows={3}
+                />
+              </div>
+            ))}
+            <button
+              onClick={() => updateContent('tabs', [...tabs, { title: `Tab ${tabs.length + 1}`, content: '' }])}
+              className="text-sm text-primary-600 hover:text-primary-700"
+            >
+              + Add tab
+            </button>
+          </div>
+        );
+
+      case 'flashcard':
+        const cards = (content.cards as Array<{ front: string; back: string }>) || [{ front: '', back: '' }];
+        return (
+          <div className="space-y-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Flashcards</label>
+            {cards.map((card, idx) => (
+              <div key={idx} className="p-3 border border-gray-200 rounded-lg">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm font-medium text-gray-600">Card {idx + 1}</span>
+                  <button
+                    onClick={() => updateContent('cards', cards.filter((_, i) => i !== idx))}
+                    className="px-2 py-1 text-red-600 hover:bg-red-50 rounded text-sm"
+                    disabled={cards.length <= 1}
+                  >
+                    Remove
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Front</label>
+                    <textarea
+                      value={card.front}
+                      onChange={(e) => {
+                        const newCards = [...cards];
+                        newCards[idx] = { ...newCards[idx], front: e.target.value };
+                        updateContent('cards', newCards);
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                      placeholder="Question or term..."
+                      rows={2}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-1">Back</label>
+                    <textarea
+                      value={card.back}
+                      onChange={(e) => {
+                        const newCards = [...cards];
+                        newCards[idx] = { ...newCards[idx], back: e.target.value };
+                        updateContent('cards', newCards);
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                      placeholder="Answer or definition..."
+                      rows={2}
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+            <button
+              onClick={() => updateContent('cards', [...cards, { front: '', back: '' }])}
+              className="text-sm text-primary-600 hover:text-primary-700"
+            >
+              + Add flashcard
+            </button>
+          </div>
+        );
+
+      case 'checklist':
+        const checklistItems = (content.items as Array<{ text: string; checked: boolean }>) || [{ text: '', checked: false }];
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Checklist Title (optional)</label>
+              <input
+                type="text"
+                value={(content.title as string) || ''}
+                onChange={(e) => updateContent('title', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                placeholder="Checklist title..."
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Items</label>
+              {checklistItems.map((item, idx) => (
+                <div key={idx} className="flex gap-2 mb-2 items-center">
+                  <input
+                    type="checkbox"
+                    checked={item.checked}
+                    onChange={(e) => {
+                      const newItems = [...checklistItems];
+                      newItems[idx] = { ...newItems[idx], checked: e.target.checked };
+                      updateContent('items', newItems);
+                    }}
+                    className="w-5 h-5 rounded border-gray-300"
+                  />
+                  <input
+                    type="text"
+                    value={item.text}
+                    onChange={(e) => {
+                      const newItems = [...checklistItems];
+                      newItems[idx] = { ...newItems[idx], text: e.target.value };
+                      updateContent('items', newItems);
+                    }}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                    placeholder={`Item ${idx + 1}...`}
+                  />
+                  <button
+                    onClick={() => updateContent('items', checklistItems.filter((_, i) => i !== idx))}
+                    className="px-2 py-1 text-red-600 hover:bg-red-50 rounded"
+                    disabled={checklistItems.length <= 1}
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+              <button
+                onClick={() => updateContent('items', [...checklistItems, { text: '', checked: false }])}
+                className="text-sm text-primary-600 hover:text-primary-700"
+              >
+                + Add item
+              </button>
+            </div>
+          </div>
+        );
+
+      case 'timeline':
+        const events = (content.events as Array<{ date: string; title: string; description: string }>) || [{ date: '', title: '', description: '' }];
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Timeline Title (optional)</label>
+              <input
+                type="text"
+                value={(content.title as string) || ''}
+                onChange={(e) => updateContent('title', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                placeholder="Timeline title..."
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Events</label>
+              {events.map((event, idx) => (
+                <div key={idx} className="p-3 border border-gray-200 rounded-lg mb-2">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm font-medium text-gray-600">Event {idx + 1}</span>
+                    <button
+                      onClick={() => updateContent('events', events.filter((_, i) => i !== idx))}
+                      className="px-2 py-1 text-red-600 hover:bg-red-50 rounded text-sm"
+                      disabled={events.length <= 1}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 mb-2">
+                    <input
+                      type="text"
+                      value={event.date}
+                      onChange={(e) => {
+                        const newEvents = [...events];
+                        newEvents[idx] = { ...newEvents[idx], date: e.target.value };
+                        updateContent('events', newEvents);
+                      }}
+                      className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                      placeholder="Date/period..."
+                    />
+                    <input
+                      type="text"
+                      value={event.title}
+                      onChange={(e) => {
+                        const newEvents = [...events];
+                        newEvents[idx] = { ...newEvents[idx], title: e.target.value };
+                        updateContent('events', newEvents);
+                      }}
+                      className="col-span-2 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                      placeholder="Event title..."
+                    />
+                  </div>
+                  <textarea
+                    value={event.description}
+                    onChange={(e) => {
+                      const newEvents = [...events];
+                      newEvents[idx] = { ...newEvents[idx], description: e.target.value };
+                      updateContent('events', newEvents);
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                    placeholder="Event description..."
+                    rows={2}
+                  />
+                </div>
+              ))}
+              <button
+                onClick={() => updateContent('events', [...events, { date: '', title: '', description: '' }])}
+                className="text-sm text-primary-600 hover:text-primary-700"
+              >
+                + Add event
+              </button>
+            </div>
+          </div>
+        );
+
+      case 'glossary':
+        const terms = (content.terms as Array<{ term: string; definition: string }>) || [{ term: '', definition: '' }];
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Glossary Title (optional)</label>
+              <input
+                type="text"
+                value={(content.title as string) || ''}
+                onChange={(e) => updateContent('title', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                placeholder="Glossary title..."
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Terms</label>
+              {terms.map((item, idx) => (
+                <div key={idx} className="p-3 border border-gray-200 rounded-lg mb-2">
+                  <div className="flex gap-2 mb-2">
+                    <input
+                      type="text"
+                      value={item.term}
+                      onChange={(e) => {
+                        const newTerms = [...terms];
+                        newTerms[idx] = { ...newTerms[idx], term: e.target.value };
+                        updateContent('terms', newTerms);
+                      }}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg font-medium focus:ring-2 focus:ring-primary-500"
+                      placeholder="Term..."
+                    />
+                    <button
+                      onClick={() => updateContent('terms', terms.filter((_, i) => i !== idx))}
+                      className="px-2 py-1 text-red-600 hover:bg-red-50 rounded"
+                      disabled={terms.length <= 1}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <textarea
+                    value={item.definition}
+                    onChange={(e) => {
+                      const newTerms = [...terms];
+                      newTerms[idx] = { ...newTerms[idx], definition: e.target.value };
+                      updateContent('terms', newTerms);
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                    placeholder="Definition..."
+                    rows={2}
+                  />
+                </div>
+              ))}
+              <button
+                onClick={() => updateContent('terms', [...terms, { term: '', definition: '' }])}
+                className="text-sm text-primary-600 hover:text-primary-700"
+              >
+                + Add term
+              </button>
+            </div>
+          </div>
+        );
+
+      case 'image':
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Image URL</label>
+              <input
+                type="url"
+                value={(content.url as string) || ''}
+                onChange={(e) => updateContent('url', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                placeholder="https://example.com/image.jpg"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Alt Text</label>
+              <input
+                type="text"
+                value={(content.alt as string) || ''}
+                onChange={(e) => updateContent('alt', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                placeholder="Describe the image..."
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Caption (optional)</label>
+              <input
+                type="text"
+                value={(content.caption as string) || ''}
+                onChange={(e) => updateContent('caption', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                placeholder="Image caption..."
+              />
+            </div>
+            {(content.url as string) && (
+              <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                <p className="text-sm text-gray-500 mb-2">Preview:</p>
+                <img src={content.url as string} alt={(content.alt as string) || ''} className="max-w-full h-auto rounded" />
+              </div>
+            )}
+          </div>
+        );
+
+      case 'video':
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Video URL</label>
+              <input
+                type="url"
+                value={(content.url as string) || ''}
+                onChange={(e) => updateContent('url', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                placeholder="https://youtube.com/watch?v=... or https://vimeo.com/..."
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Title</label>
+              <input
+                type="text"
+                value={(content.title as string) || ''}
+                onChange={(e) => updateContent('title', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                placeholder="Video title..."
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Description (optional)</label>
+              <textarea
+                value={(content.description as string) || ''}
+                onChange={(e) => updateContent('description', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                placeholder="Video description..."
+                rows={3}
+              />
+            </div>
+          </div>
+        );
+
+      case 'file':
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">File URL</label>
+              <input
+                type="url"
+                value={(content.url as string) || ''}
+                onChange={(e) => updateContent('url', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                placeholder="https://example.com/file.pdf"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">File Title</label>
+              <input
+                type="text"
+                value={(content.title as string) || ''}
+                onChange={(e) => updateContent('title', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                placeholder="File name..."
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">File Type</label>
+              <select
+                value={(content.fileType as string) || ''}
+                onChange={(e) => updateContent('fileType', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+              >
+                <option value="">Select type...</option>
+                <option value="pdf">PDF</option>
+                <option value="doc">Word Document</option>
+                <option value="xls">Excel Spreadsheet</option>
+                <option value="ppt">PowerPoint</option>
+                <option value="zip">ZIP Archive</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Description (optional)</label>
+              <textarea
+                value={(content.description as string) || ''}
+                onChange={(e) => updateContent('description', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                placeholder="File description..."
+                rows={2}
+              />
+            </div>
+          </div>
+        );
+
+      case 'embed':
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Embed URL</label>
+              <input
+                type="url"
+                value={(content.url as string) || ''}
+                onChange={(e) => updateContent('url', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                placeholder="https://..."
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Title (optional)</label>
+              <input
+                type="text"
+                value={(content.title as string) || ''}
+                onChange={(e) => updateContent('title', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                placeholder="Embed title..."
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Embed Type</label>
+              <select
+                value={(content.embedType as string) || 'iframe'}
+                onChange={(e) => updateContent('embedType', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+              >
+                <option value="iframe">IFrame</option>
+                <option value="oembed">oEmbed</option>
+              </select>
+            </div>
+          </div>
+        );
+
       default:
         return (
           <div>
@@ -1079,15 +1651,30 @@ export function AICourseBuilder({ categories }: AICourseBuilderProps) {
   } | null>(null);
   const [showAddBlockMenu, setShowAddBlockMenu] = useState<number | null>(null);
 
-  // Available block types for adding
+  // Available block types for adding - organized by category
   const blockTypes = [
-    { type: 'text', label: 'Text', icon: '📝' },
-    { type: 'bullet_list', label: 'Bullet List', icon: '•' },
-    { type: 'numbered_steps', label: 'Numbered Steps', icon: '1️⃣' },
-    { type: 'callout', label: 'Callout', icon: '💡' },
-    { type: 'accordion', label: 'Accordion', icon: '📂' },
-    { type: 'table', label: 'Table', icon: '📊' },
-    { type: 'comparison', label: 'Comparison', icon: '⚖️' },
+    // Text & Content
+    { type: 'text', label: 'Text', icon: '📝', category: 'content' },
+    { type: 'bullet_list', label: 'Bullet List', icon: '•', category: 'content' },
+    { type: 'numbered_steps', label: 'Numbered Steps', icon: '1️⃣', category: 'content' },
+    { type: 'quote', label: 'Quote', icon: '💬', category: 'content' },
+    { type: 'code', label: 'Code Block', icon: '👨‍💻', category: 'content' },
+    // Interactive
+    { type: 'callout', label: 'Callout', icon: '💡', category: 'interactive' },
+    { type: 'accordion', label: 'Accordion', icon: '📂', category: 'interactive' },
+    { type: 'tabs', label: 'Tabs', icon: '📑', category: 'interactive' },
+    { type: 'flashcard', label: 'Flashcard', icon: '🎴', category: 'interactive' },
+    { type: 'checklist', label: 'Checklist', icon: '✅', category: 'interactive' },
+    // Data & Layout
+    { type: 'table', label: 'Table', icon: '📊', category: 'data' },
+    { type: 'comparison', label: 'Comparison', icon: '⚖️', category: 'data' },
+    { type: 'timeline', label: 'Timeline', icon: '📅', category: 'data' },
+    { type: 'glossary', label: 'Glossary', icon: '📖', category: 'data' },
+    // Media
+    { type: 'image', label: 'Image', icon: '🖼️', category: 'media' },
+    { type: 'video', label: 'Video', icon: '🎬', category: 'media' },
+    { type: 'file', label: 'File Download', icon: '📎', category: 'media' },
+    { type: 'embed', label: 'Embed', icon: '🔗', category: 'media' },
   ];
 
   // ============================================================================
@@ -2228,10 +2815,53 @@ export function AICourseBuilder({ categories }: AICourseBuilderProps) {
                                 </button>
 
                                 {showAddBlockMenu === globalLessonIndex && (
-                                  <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-lg border border-gray-200 p-2 z-10">
-                                    <p className="text-xs text-gray-500 px-2 py-1 mb-1">Select block type:</p>
+                                  <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-lg border border-gray-200 p-3 z-10 max-h-[400px] overflow-y-auto">
+                                    {/* Content Blocks */}
+                                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-2 py-1">Content</p>
+                                    <div className="grid grid-cols-2 gap-1 mb-3">
+                                      {blockTypes.filter(bt => bt.category === 'content').map((bt) => (
+                                        <button
+                                          key={bt.type}
+                                          onClick={() => addBlock(globalLessonIndex, bt.type)}
+                                          className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg text-left"
+                                        >
+                                          <span>{bt.icon}</span>
+                                          <span>{bt.label}</span>
+                                        </button>
+                                      ))}
+                                    </div>
+                                    {/* Interactive Blocks */}
+                                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-2 py-1">Interactive</p>
+                                    <div className="grid grid-cols-2 gap-1 mb-3">
+                                      {blockTypes.filter(bt => bt.category === 'interactive').map((bt) => (
+                                        <button
+                                          key={bt.type}
+                                          onClick={() => addBlock(globalLessonIndex, bt.type)}
+                                          className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg text-left"
+                                        >
+                                          <span>{bt.icon}</span>
+                                          <span>{bt.label}</span>
+                                        </button>
+                                      ))}
+                                    </div>
+                                    {/* Data Blocks */}
+                                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-2 py-1">Data & Layout</p>
+                                    <div className="grid grid-cols-2 gap-1 mb-3">
+                                      {blockTypes.filter(bt => bt.category === 'data').map((bt) => (
+                                        <button
+                                          key={bt.type}
+                                          onClick={() => addBlock(globalLessonIndex, bt.type)}
+                                          className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg text-left"
+                                        >
+                                          <span>{bt.icon}</span>
+                                          <span>{bt.label}</span>
+                                        </button>
+                                      ))}
+                                    </div>
+                                    {/* Media Blocks */}
+                                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-2 py-1">Media</p>
                                     <div className="grid grid-cols-2 gap-1">
-                                      {blockTypes.map((bt) => (
+                                      {blockTypes.filter(bt => bt.category === 'media').map((bt) => (
                                         <button
                                           key={bt.type}
                                           onClick={() => addBlock(globalLessonIndex, bt.type)}

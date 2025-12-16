@@ -282,7 +282,7 @@ export async function POST(request: NextRequest) {
         module_id: m.id,
         title: l.title || `Lesson ${li + 1}`,
         description: l.description || null,
-        content_type: 'interactive',
+        content_type: 'text',
         content: l.content || { blocks: [] },
         duration_minutes: l.duration_minutes ?? 0,
         sort_order: l.sort_order ?? li,
