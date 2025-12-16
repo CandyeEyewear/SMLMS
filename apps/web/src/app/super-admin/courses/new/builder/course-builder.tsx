@@ -9,6 +9,8 @@ import { useRouter } from 'next/navigation';
 import { ContentBlock } from './content-block';
 import { ContentSidebar } from './content-sidebar';
 import { CourseMetadataForm } from './course-metadata-form';
+import { ContentBlockRenderer } from '@/components/course-player/content-block-renderer';
+import { normalizeLessonBlocks } from '@/lib/course-content';
 
 export type ContentBlockType = {
   id: string;
@@ -604,6 +606,11 @@ function BuilderLearnerPreview({
     return [...raw].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   }, [selectedLesson]);
 
+  const normalizedBlocks = useMemo(() => {
+    // Normalize builder blocks into learner-renderer blocks.
+    return normalizeLessonBlocks({ blocks }).sort((a, b) => a.sort_order - b.sort_order);
+  }, [blocks]);
+
   return (
     <div className="fixed inset-0 bg-primary-900/35 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
@@ -679,16 +686,11 @@ function BuilderLearnerPreview({
                   No content blocks in this lesson yet.
                 </div>
               ) : (
-                blocks.map((block) => (
+                normalizedBlocks.map((block) => (
                   <div key={block.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                    <ContentBlock
-                      block={block}
-                      isSelected={false}
-                      onSelect={() => {}}
-                      onUpdate={() => {}}
-                      onDelete={() => {}}
-                      onDuplicate={() => {}}
-                    />
+                    <div className="p-6">
+                      <ContentBlockRenderer blockType={block.block_type} content={block.content} />
+                    </div>
                   </div>
                 ))
               )}
