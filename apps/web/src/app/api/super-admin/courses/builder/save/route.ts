@@ -139,7 +139,6 @@ export async function POST(request: NextRequest) {
           category_id: metadata.category_id || null,
           is_active: metadata.is_active ?? true,
           is_featured: metadata.is_featured ?? false,
-          created_by: user.id,
         })
         .select()
         .single();
