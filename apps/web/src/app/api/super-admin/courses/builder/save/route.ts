@@ -26,6 +26,27 @@ function formatUnknownError(err: unknown) {
   return { message: 'Unknown error' };
 }
 
+function maybeStripMissingColumn(payload: Record<string, any>, err: unknown) {
+  const formatted = formatUnknownError(err);
+  // PostgREST missing column error looks like:
+  // "Could not find the 'is_active' column of 'courses' in the schema cache"
+  if (formatted.code !== 'PGRST204' || typeof formatted.message !== 'string') {
+    return { payload, stripped: null as string | null };
+  }
+
+  const match = formatted.message.match(/Could not find the '([^']+)' column of 'courses'/);
+  const column = match?.[1];
+  if (!column) return { payload, stripped: null as string | null };
+
+  if (Object.prototype.hasOwnProperty.call(payload, column)) {
+    const next = { ...payload };
+    delete next[column];
+    return { payload: next, stripped: column };
+  }
+
+  return { payload, stripped: null as string | null };
+}
+
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
@@ -127,15 +148,28 @@ export async function POST(request: NextRequest) {
         updatePayload.original_prompt = metadata.original_prompt;
       }
 
-      const { data: updatedCourse, error: updateError } = await admin
-        .from('courses')
-        .update(updatePayload as never)
-        .eq('id', courseId)
-        .select()
-        .single();
-
-      if (updateError) {
-        throw updateError;
+      let updatedCourse: any = null;
+      try {
+        const res = await admin
+          .from('courses')
+          .update(updatePayload as never)
+          .eq('id', courseId)
+          .select()
+          .single();
+        if (res.error) throw res.error;
+        updatedCourse = res.data;
+      } catch (err) {
+        // If schema is behind (missing column), strip it and retry once.
+        const stripped1 = maybeStripMissingColumn(updatePayload, err);
+        if (!stripped1.stripped) throw err;
+        const res2 = await admin
+          .from('courses')
+          .update(stripped1.payload as never)
+          .eq('id', courseId)
+          .select()
+          .single();
+        if (res2.error) throw res2.error;
+        updatedCourse = res2.data;
       }
 
       course = updatedCourse;
@@ -175,14 +209,25 @@ export async function POST(request: NextRequest) {
         insertPayload.original_prompt = metadata.original_prompt;
       }
 
-      const { data: newCourse, error: createError } = await admin
-        .from('courses')
-        .insert(insertPayload as never)
-        .select()
-        .single();
-
-      if (createError) {
-        throw createError;
+      let newCourse: any = null;
+      try {
+        const res = await admin
+          .from('courses')
+          .insert(insertPayload as never)
+          .select()
+          .single();
+        if (res.error) throw res.error;
+        newCourse = res.data;
+      } catch (err) {
+        const stripped1 = maybeStripMissingColumn(insertPayload, err);
+        if (!stripped1.stripped) throw err;
+        const res2 = await admin
+          .from('courses')
+          .insert(stripped1.payload as never)
+          .select()
+          .single();
+        if (res2.error) throw res2.error;
+        newCourse = res2.data;
       }
 
       course = newCourse;
