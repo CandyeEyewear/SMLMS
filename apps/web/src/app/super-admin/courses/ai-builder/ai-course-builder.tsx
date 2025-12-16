@@ -70,7 +70,7 @@ type GeneratedQuiz = {
   error?: string;
 };
 
-type Step = 'input' | 'outline' | 'content' | 'review' | 'building';
+type Step = 'input' | 'outline' | 'content' | 'review' | 'building' | 'success';
 
 // ============================================================================
 // HELPER FUNCTIONS
@@ -1753,6 +1753,9 @@ export function AICourseBuilder({ categories }: AICourseBuilderProps) {
     variant?: 'danger' | 'warning' | 'info';
   } | null>(null);
 
+  // Success state - stores created course info
+  const [createdCourseId, setCreatedCourseId] = useState<string | null>(null);
+
   // Available block types for adding - organized by category
   const blockTypes = [
     // Text & Content
@@ -2210,7 +2213,10 @@ export function AICourseBuilder({ categories }: AICourseBuilderProps) {
 
       // TODO: Save quizzes to database (requires quiz API endpoint)
 
-      router.push(`/super-admin/courses/${id}/preview`);
+      // Show success page with options
+      setCreatedCourseId(id);
+      setStep('success');
+      setLoading(false);
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to create course';
       setError(errorMessage);
@@ -3117,6 +3123,167 @@ export function AICourseBuilder({ categories }: AICourseBuilderProps) {
           <p className="text-gray-600">
             Saving all content to the database. Please wait...
           </p>
+        </div>
+      </div>
+    );
+  }
+
+  // ============================================================================
+  // RENDER: SUCCESS STATE
+  // ============================================================================
+
+  if (step === 'success' && createdCourseId) {
+    return (
+      <div className="p-8 max-w-2xl mx-auto">
+        <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+          {/* Success Header */}
+          <div className="bg-gradient-to-r from-green-500 to-emerald-600 px-8 py-10 text-center">
+            <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+              <svg className="w-10 h-10 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h1 className="text-2xl font-bold text-white mb-2">Course Created Successfully!</h1>
+            <p className="text-green-100">
+              Your course &quot;{outline?.title}&quot; has been saved and is ready for the next steps.
+            </p>
+          </div>
+
+          {/* Course Summary */}
+          <div className="px-8 py-6 border-b border-gray-100">
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">Course Summary</h2>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="bg-gray-50 rounded-lg p-3">
+                <span className="text-gray-500">Modules</span>
+                <p className="text-lg font-semibold text-gray-900">{outline?.modules?.length || 0}</p>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-3">
+                <span className="text-gray-500">Lessons</span>
+                <p className="text-lg font-semibold text-gray-900">{generatedLessons.length}</p>
+              </div>
+              {selectedCategory && (
+                <div className="col-span-2 bg-gray-50 rounded-lg p-3">
+                  <span className="text-gray-500">Category</span>
+                  <p className="text-lg font-semibold text-gray-900">
+                    {categories.find(c => c.id === selectedCategory)?.name || 'Uncategorized'}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Next Steps */}
+          <div className="px-8 py-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">What would you like to do next?</h2>
+            <div className="space-y-3">
+              {/* Edit Course */}
+              <Link
+                href={`/super-admin/courses/${createdCourseId}`}
+                className="flex items-center gap-4 p-4 rounded-lg border border-gray-200 hover:border-primary-300 hover:bg-primary-50 transition-all group"
+              >
+                <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center group-hover:bg-primary-200 transition-colors">
+                  <svg className="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium text-gray-900">Edit Course</p>
+                  <p className="text-sm text-gray-500">Fine-tune content, add media, or adjust settings</p>
+                </div>
+                <svg className="w-5 h-5 text-gray-400 group-hover:text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </Link>
+
+              {/* Preview Course */}
+              <Link
+                href={`/super-admin/courses/${createdCourseId}/preview`}
+                className="flex items-center gap-4 p-4 rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all group"
+              >
+                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center group-hover:bg-blue-200 transition-colors">
+                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium text-gray-900">Preview Course</p>
+                  <p className="text-sm text-gray-500">See how learners will experience the course</p>
+                </div>
+                <svg className="w-5 h-5 text-gray-400 group-hover:text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </Link>
+
+              {/* Manage Courses */}
+              <Link
+                href="/super-admin/courses"
+                className="flex items-center gap-4 p-4 rounded-lg border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all group"
+              >
+                <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center group-hover:bg-gray-200 transition-colors">
+                  <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium text-gray-900">Back to All Courses</p>
+                  <p className="text-sm text-gray-500">View and manage your course catalog</p>
+                </div>
+                <svg className="w-5 h-5 text-gray-400 group-hover:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </Link>
+
+              {/* Create Another */}
+              <button
+                onClick={() => {
+                  // Reset all state for new course
+                  setStep('input');
+                  setTopic('');
+                  setTargetAudience('');
+                  setIndustry('');
+                  setTone('conversational');
+                  setModuleCount(4);
+                  setLessonsPerModule(3);
+                  setTopicsToCover('');
+                  setTopicsToAvoid('');
+                  setCompanyContext('');
+                  setIncludeQuizzes(true);
+                  setOutline(null);
+                  setSelectedCategory('');
+                  setGeneratedLessons([]);
+                  setGeneratedQuizzes([]);
+                  setContentGenerationStatus('idle');
+                  setCurrentGeneratingItem('');
+                  setExpandedModules(new Set([0]));
+                  setExpandedLessons(new Set());
+                  setCreatedCourseId(null);
+                  setError(null);
+                }}
+                className="flex items-center gap-4 p-4 rounded-lg border border-gray-200 hover:border-purple-300 hover:bg-purple-50 transition-all group w-full text-left"
+              >
+                <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center group-hover:bg-purple-200 transition-colors">
+                  <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium text-gray-900">Create Another Course</p>
+                  <p className="text-sm text-gray-500">Start fresh with the AI Course Builder</p>
+                </div>
+                <svg className="w-5 h-5 text-gray-400 group-hover:text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          {/* Course ID Reference */}
+          <div className="px-8 py-4 bg-gray-50 border-t border-gray-100">
+            <p className="text-xs text-gray-500 text-center">
+              Course ID: <code className="bg-gray-200 px-2 py-0.5 rounded text-gray-700">{createdCourseId}</code>
+            </p>
+          </div>
         </div>
       </div>
     );
