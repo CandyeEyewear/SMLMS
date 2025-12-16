@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { DndContext, DragOverlay, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -91,6 +91,7 @@ export function CourseBuilder({ categories, courseId, initialBlocks = [], initia
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showMetadataForm, setShowMetadataForm] = useState(!courseId || !initialMetadata);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const [metadata, setMetadata] = useState<CourseMetadata>(
     initialMetadata || {
@@ -158,6 +159,17 @@ export function CourseBuilder({ categories, courseId, initialBlocks = [], initia
 
   const selectedLesson = findLesson(selectedLessonId);
   const blocks = selectedLesson?.blocks || [];
+  const modulesForPreview = useMemo(() => {
+    // keep stable ordering for preview
+    return modules.map((m, mi) => ({
+      ...m,
+      sort_order: mi,
+      lessons: (m.lessons || []).map((l, li) => ({
+        ...l,
+        sort_order: li,
+      })),
+    }));
+  }, [modules]);
 
   const addBlock = useCallback((type: ContentBlockType['type'], data: any = {}) => {
     if (!selectedLessonId) {
@@ -381,6 +393,13 @@ export function CourseBuilder({ categories, courseId, initialBlocks = [], initia
         </div>
         <div className="flex items-center gap-3">
           <button
+            type="button"
+            onClick={() => setPreviewOpen(true)}
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+          >
+            Preview (Learner)
+          </button>
+          <button
             onClick={() => setShowMetadataForm(true)}
             className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
           >
@@ -413,6 +432,17 @@ export function CourseBuilder({ categories, courseId, initialBlocks = [], initia
           categories={categories}
           onUpdate={setMetadata}
           onClose={() => setShowMetadataForm(false)}
+        />
+      )}
+
+      {/* Learner Preview Modal */}
+      {previewOpen && (
+        <BuilderLearnerPreview
+          title={metadata.title || 'Untitled course'}
+          modules={modulesForPreview}
+          selectedLessonId={selectedLessonId}
+          onSelectLesson={(id) => setSelectedLessonId(id)}
+          onClose={() => setPreviewOpen(false)}
         />
       )}
 
@@ -528,6 +558,143 @@ export function CourseBuilder({ categories, courseId, initialBlocks = [], initia
             />
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+function BuilderLearnerPreview({
+  title,
+  modules,
+  selectedLessonId,
+  onSelectLesson,
+  onClose,
+}: {
+  title: string;
+  modules: Array<{
+    id: string;
+    title: string;
+    sort_order: number;
+    lessons: Array<{
+      id: string;
+      title: string;
+      sort_order: number;
+      blocks: ContentBlockType[];
+    }>;
+  }>;
+  selectedLessonId: string | null;
+  onSelectLesson: (lessonId: string) => void;
+  onClose: () => void;
+}) {
+  const modulesSorted = useMemo(
+    () => [...modules].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)),
+    [modules]
+  );
+
+  const selectedLesson = useMemo(() => {
+    for (const m of modulesSorted) {
+      const l = m.lessons.find((x) => x.id === selectedLessonId);
+      if (l) return l;
+    }
+    return null;
+  }, [modulesSorted, selectedLessonId]);
+
+  const blocks = useMemo(() => {
+    const raw = selectedLesson?.blocks || [];
+    return [...raw].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  }, [selectedLesson]);
+
+  return (
+    <div className="fixed inset-0 bg-primary-900/35 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+          <div className="min-w-0">
+            <p className="text-xs text-gray-500">Learner preview</p>
+            <h2 className="text-lg font-semibold text-gray-900 truncate">{title}</h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600"
+            aria-label="Close"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-hidden grid grid-cols-1 lg:grid-cols-3">
+          <aside className="border-r border-gray-200 bg-gray-50 overflow-y-auto">
+            <div className="p-4">
+              <h3 className="text-sm font-semibold text-gray-900">Course content</h3>
+              <p className="text-xs text-gray-500 mt-1">Select a lesson to preview</p>
+            </div>
+            <div className="px-4 pb-4 space-y-3">
+              {modulesSorted.length === 0 ? (
+                <div className="text-sm text-gray-500">No modules yet.</div>
+              ) : (
+                modulesSorted.map((m, mi) => (
+                  <div key={m.id} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                    <div className="px-3 py-2 bg-gray-50 border-b border-gray-200">
+                      <p className="text-xs font-semibold text-gray-900 truncate">{m.title || `Module ${mi + 1}`}</p>
+                    </div>
+                    <div className="p-2 space-y-1">
+                      {m.lessons.length === 0 ? (
+                        <p className="px-2 py-2 text-xs text-gray-500">No lessons</p>
+                      ) : (
+                        m.lessons
+                          .slice()
+                          .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+                          .map((l, li) => (
+                            <button
+                              key={l.id}
+                              type="button"
+                              onClick={() => onSelectLesson(l.id)}
+                              className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
+                                selectedLessonId === l.id
+                                  ? 'bg-primary-50 text-primary-700'
+                                  : 'text-gray-700 hover:bg-gray-50'
+                              }`}
+                            >
+                              {l.title || `Lesson ${li + 1}`}
+                            </button>
+                          ))
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </aside>
+
+          <main className="lg:col-span-2 overflow-y-auto bg-gray-50">
+            <div className="max-w-3xl mx-auto p-6 space-y-4">
+              {!selectedLessonId ? (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center text-gray-500">
+                  Select a lesson to preview.
+                </div>
+              ) : blocks.length === 0 ? (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center text-gray-500">
+                  No content blocks in this lesson yet.
+                </div>
+              ) : (
+                blocks.map((block) => (
+                  <div key={block.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                    <ContentBlock
+                      block={block}
+                      isSelected={false}
+                      onSelect={() => {}}
+                      onUpdate={() => {}}
+                      onDelete={() => {}}
+                      onDuplicate={() => {}}
+                    />
+                  </div>
+                ))
+              )}
+            </div>
+          </main>
+        </div>
       </div>
     </div>
   );
