@@ -607,8 +607,8 @@ export function AICourseBuilder({ categories }: AICourseBuilderProps) {
     // Generate lessons sequentially
     for (let i = 0; i < lessons.length; i++) {
       const lesson = lessons[i];
-      const module = outline.modules[lesson.moduleIndex];
-      const lessonData = module.lessons[lesson.lessonIndex];
+      const courseModule = outline.modules[lesson.moduleIndex];
+      const lessonData = courseModule.lessons[lesson.lessonIndex];
 
       setCurrentGeneratingItem(`Lesson: ${lessonData.title}`);
 
@@ -623,7 +623,7 @@ export function AICourseBuilder({ categories }: AICourseBuilderProps) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             courseTitle: outline.title,
-            moduleTitle: module.title,
+            moduleTitle: courseModule.title,
             lessonTitle: lessonData.title,
             lessonSummary: lessonData.summary,
             targetAudience,
@@ -662,21 +662,21 @@ export function AICourseBuilder({ categories }: AICourseBuilderProps) {
     if (includeQuizzes) {
       for (let i = 0; i < quizzes.length; i++) {
         const quiz = quizzes[i];
-        const module = outline.modules[quiz.moduleIndex];
+        const courseModule = outline.modules[quiz.moduleIndex];
 
-        setCurrentGeneratingItem(`Quiz: ${module.title}`);
+        setCurrentGeneratingItem(`Quiz: ${courseModule.title}`);
 
         setGeneratedQuizzes(prev => prev.map((q, idx) =>
           idx === i ? { ...q, status: 'generating' } : q
         ));
 
         try {
-          const topics = module.lessons.map(l => l.title);
+          const topics = courseModule.lessons.map(l => l.title);
           const response = await fetch('/api/super-admin/courses/ai/generate-quiz', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              moduleTitle: module.title,
+              moduleTitle: courseModule.title,
               topics,
               questionCount: 5,
             }),
@@ -712,8 +712,8 @@ export function AICourseBuilder({ categories }: AICourseBuilderProps) {
     if (!outline) return;
 
     const lesson = generatedLessons[lessonIndex];
-    const module = outline.modules[lesson.moduleIndex];
-    const lessonData = module.lessons[lesson.lessonIndex];
+    const courseModule = outline.modules[lesson.moduleIndex];
+    const lessonData = courseModule.lessons[lesson.lessonIndex];
 
     setGeneratedLessons(prev => prev.map((l, idx) =>
       idx === lessonIndex ? { ...l, status: 'generating' } : l
@@ -725,7 +725,7 @@ export function AICourseBuilder({ categories }: AICourseBuilderProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           courseTitle: outline.title,
-          moduleTitle: module.title,
+          moduleTitle: courseModule.title,
           lessonTitle: lessonData.title,
           lessonSummary: lessonData.summary,
           targetAudience,
@@ -757,19 +757,19 @@ export function AICourseBuilder({ categories }: AICourseBuilderProps) {
   const regenerateQuiz = async (quizIndex: number) => {
     if (!outline) return;
 
-    const module = outline.modules[quizIndex];
+    const courseModule = outline.modules[quizIndex];
 
     setGeneratedQuizzes(prev => prev.map((q, idx) =>
       idx === quizIndex ? { ...q, status: 'generating' } : q
     ));
 
     try {
-      const topics = module.lessons.map(l => l.title);
+      const topics = courseModule.lessons.map(l => l.title);
       const response = await fetch('/api/super-admin/courses/ai/generate-quiz', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          moduleTitle: module.title,
+          moduleTitle: courseModule.title,
           topics,
           questionCount: 5,
         }),
