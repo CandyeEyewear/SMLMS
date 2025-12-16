@@ -2437,6 +2437,10 @@ export function AICourseBuilder({ categories }: AICourseBuilderProps) {
         };
       });
 
+      // Calculate total lessons for duration estimate
+      const totalLessons = modules.reduce((acc, m) => acc + m.lessons.length, 0);
+      const estimatedDuration = totalLessons * 5; // ~5 min per lesson
+
       const courseResponse = await fetch('/api/super-admin/courses/builder/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -2444,10 +2448,20 @@ export function AICourseBuilder({ categories }: AICourseBuilderProps) {
           metadata: {
             title: outline.title,
             description: outline.description,
+            short_description: outline.description?.substring(0, 200) || null,
+            overview: outline.description,
             category_id: selectedCategory,
+            difficulty_level: 'beginner', // Default for AI courses
             is_active: true,
             is_featured: false,
+            is_published: true, // AI courses default to published
+            is_free: true, // AI courses default to free
             original_prompt: topic,
+            target_audience: [], // Can be enhanced later
+            objectives: [], // Can be enhanced later
+            prerequisites: [], // Can be enhanced later
+            course_summary: outline.description?.substring(0, 500) || null,
+            estimated_duration_minutes: estimatedDuration,
           },
           modules,
         }),

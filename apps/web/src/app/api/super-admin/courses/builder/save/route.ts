@@ -74,12 +74,22 @@ export async function POST(request: NextRequest) {
         title: string;
         slug?: string;
         description?: string;
+        short_description?: string;
+        overview?: string;
         thumbnail_url?: string;
         duration_minutes?: number | null;
+        estimated_duration_minutes?: number | null;
         category_id?: string;
+        difficulty_level?: string;
         is_active?: boolean;
         is_featured?: boolean;
+        is_published?: boolean;
+        is_free?: boolean;
         original_prompt?: string;
+        target_audience?: string | string[] | object;
+        objectives?: string[];
+        prerequisites?: string[] | object;
+        course_summary?: string;
       };
       modules?: Array<{
         id: string;
@@ -130,17 +140,52 @@ export async function POST(request: NextRequest) {
 
     let course;
 
+    // Calculate total duration from lessons
+    const totalDurationMinutes = (modules || []).reduce((total, m) => {
+      return total + (m.lessons || []).reduce((lessonTotal, l) => {
+        return lessonTotal + (l.duration_minutes || 5); // Default 5 min per lesson if not set
+      }, 0);
+    }, 0);
+
+    // Prepare target_audience as JSONB
+    const targetAudienceJson = metadata.target_audience
+      ? (typeof metadata.target_audience === 'string'
+          ? [metadata.target_audience]
+          : metadata.target_audience)
+      : [];
+
+    // Prepare prerequisites as JSONB
+    const prerequisitesJson = metadata.prerequisites
+      ? (Array.isArray(metadata.prerequisites)
+          ? metadata.prerequisites
+          : metadata.prerequisites)
+      : [];
+
+    // Prepare objectives as text array
+    const objectivesArray = metadata.objectives || [];
+
     if (courseId) {
       // Update existing course
       const updatePayload: Record<string, any> = {
         title: metadata.title,
         slug: metadata.slug,
         description: metadata.description || null,
+        short_description: metadata.short_description || (metadata.description?.substring(0, 200) || null),
+        overview: metadata.overview || metadata.description || null,
         thumbnail_url: metadata.thumbnail_url || null,
-        duration_minutes: metadata.duration_minutes || null,
+        duration_minutes: totalDurationMinutes,
+        estimated_duration_minutes: metadata.estimated_duration_minutes || totalDurationMinutes,
         category_id: metadata.category_id || null,
+        difficulty_level: metadata.difficulty_level || 'beginner',
         is_active: metadata.is_active ?? true,
         is_featured: metadata.is_featured ?? false,
+        is_published: metadata.is_published ?? true, // Default to published for AI courses
+        is_free: metadata.is_free ?? true, // Default to free for AI courses
+        published_at: metadata.is_published !== false ? new Date().toISOString() : null,
+        target_audience: targetAudienceJson,
+        objectives: objectivesArray,
+        prerequisites: prerequisitesJson,
+        course_summary: metadata.course_summary || null,
         updated_at: new Date().toISOString(),
       };
 
@@ -207,11 +252,22 @@ export async function POST(request: NextRequest) {
         title: metadata.title,
         slug: generatedSlug,
         description: metadata.description || null,
+        short_description: metadata.short_description || (metadata.description?.substring(0, 200) || null),
+        overview: metadata.overview || metadata.description || null,
         thumbnail_url: metadata.thumbnail_url || null,
-        duration_minutes: metadata.duration_minutes || null,
+        duration_minutes: totalDurationMinutes,
+        estimated_duration_minutes: metadata.estimated_duration_minutes || totalDurationMinutes,
         category_id: metadata.category_id || null,
+        difficulty_level: metadata.difficulty_level || 'beginner',
         is_active: metadata.is_active ?? true,
         is_featured: metadata.is_featured ?? false,
+        is_published: metadata.is_published ?? true, // Default to published for AI courses
+        is_free: metadata.is_free ?? true, // Default to free for AI courses
+        published_at: new Date().toISOString(),
+        target_audience: targetAudienceJson,
+        objectives: objectivesArray,
+        prerequisites: prerequisitesJson,
+        course_summary: metadata.course_summary || null,
       };
 
       if (typeof metadata.original_prompt === 'string' && metadata.original_prompt.trim()) {
