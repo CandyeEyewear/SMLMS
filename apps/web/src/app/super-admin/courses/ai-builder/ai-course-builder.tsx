@@ -49,6 +49,7 @@ type GeneratedLesson = {
   }>;
   status: 'pending' | 'generating' | 'completed' | 'error';
   error?: string;
+  is_preview?: boolean;
 };
 
 type QuizQuestion = {
@@ -1160,6 +1161,13 @@ export function AICourseBuilder({ categories }: AICourseBuilderProps) {
     }));
   }, []);
 
+  const toggleLessonPreview = useCallback((lessonIndex: number) => {
+    setGeneratedLessons(prev => prev.map((lesson, idx) => {
+      if (idx !== lessonIndex) return lesson;
+      return { ...lesson, is_preview: !lesson.is_preview };
+    }));
+  }, []);
+
   // ============================================================================
   // STEP 1: Generate Outline
   // ============================================================================
@@ -1473,6 +1481,7 @@ export function AICourseBuilder({ categories }: AICourseBuilderProps) {
             description: outline.modules[moduleIndex].lessons[lessonIndex]?.summary || '',
             sort_order: lessonIndex,
             duration_minutes: null,
+            is_preview: lesson.is_preview ?? false,
             content: {
               blocks: lesson.blocks.map((block, blockIndex) => ({
                 id: block.id,
@@ -2145,8 +2154,27 @@ export function AICourseBuilder({ categories }: AICourseBuilderProps) {
                               </span>
                               <span className="font-medium text-gray-800">{lesson.title}</span>
                               <span className="text-sm text-gray-400">({lesson.blocks.length} blocks)</span>
+                              {lesson.is_preview && (
+                                <span className="px-2 py-0.5 text-xs font-medium bg-purple-100 text-purple-700 rounded-full">
+                                  Preview
+                                </span>
+                              )}
                             </div>
                             <div className="flex items-center gap-2">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleLessonPreview(globalLessonIndex);
+                                }}
+                                className={`px-2 py-1 text-xs rounded flex items-center gap-1 ${
+                                  lesson.is_preview
+                                    ? 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+                                    : 'text-gray-500 hover:bg-gray-100'
+                                }`}
+                                title={lesson.is_preview ? 'Remove from free preview' : 'Mark as free preview'}
+                              >
+                                👁️ {lesson.is_preview ? 'Preview On' : 'Preview Off'}
+                              </button>
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
