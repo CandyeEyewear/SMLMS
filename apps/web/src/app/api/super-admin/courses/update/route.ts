@@ -43,12 +43,16 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if slug already exists for a different course
-    const { data: existingCourse } = await supabase
+    const { data: existingCourse, error: checkError } = await supabase
       .from('courses')
       .select('id')
       .eq('slug', slug)
       .neq('id', id)
-      .single();
+      .maybeSingle();
+
+    if (checkError) {
+      throw checkError;
+    }
 
     if (existingCourse) {
       return NextResponse.json(

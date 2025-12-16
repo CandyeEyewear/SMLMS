@@ -175,23 +175,31 @@ export async function POST(request: NextRequest) {
       course = updatedCourse;
     } else {
       // Create new course
-      const generatedSlug = metadata.slug || metadata.title
+      const baseSlug = (metadata.slug || metadata.title || 'course')
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/(^-|-$)/g, '');
 
-      // Check if slug already exists
-      const { data: existingCourse } = await admin
-        .from('courses')
-        .select('id')
-        .eq('slug', generatedSlug)
-        .maybeSingle();
-
-      if (existingCourse) {
-        return NextResponse.json(
-          { error: 'A course with this slug already exists' },
-          { status: 400 }
-        );
+      // Ensure slug is unique (auto-suffix: "-2", "-3", ...)
+      let generatedSlug = baseSlug || 'course';
+      for (let i = 0; i < 50; i++) {
+        const candidate = i === 0 ? generatedSlug : `${generatedSlug}-${i + 1}`;
+        const { data: existingCourse, error: checkError } = await admin
+          .from('courses')
+          .select('id')
+          .eq('slug', candidate)
+          .maybeSingle();
+        if (checkError) throw checkError;
+        if (!existingCourse) {
+          generatedSlug = candidate;
+          break;
+        }
+        if (i === 49) {
+          return NextResponse.json(
+            { error: 'Unable to generate a unique course slug. Please change the title.' },
+            { status: 400 }
+          );
+        }
       }
 
       const insertPayload: Record<string, any> = {
