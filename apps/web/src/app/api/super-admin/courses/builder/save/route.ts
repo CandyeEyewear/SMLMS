@@ -285,7 +285,6 @@ export async function POST(request: NextRequest) {
         content: l.content || { blocks: [] },
         duration_minutes: l.duration_minutes ?? 0,
         sort_order: l.sort_order ?? li,
-        is_preview: false,
         is_published: false,
         updated_at: new Date().toISOString(),
       }))
