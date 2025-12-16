@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import type { ReactNode } from 'react';
 import { ContentBlockType } from './course-builder';
 
 interface ContentBlockProps {
@@ -951,7 +952,7 @@ function EmbedBlock({ block, isSelected, onSelect, onUpdate, showProperties }: O
 
 // ---- Additional block types (friendly form editors) ----
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
@@ -2572,7 +2573,13 @@ function ComparisonBlock({ block, onUpdate, showProperties }: Omit<ContentBlockP
     title?: string;
     columns?: Array<{ header: string; highlight?: boolean; items: Array<{ text: string; type: 'pro' | 'con' | 'neutral' }> }>;
   };
-  const columns = Array.isArray(data.columns) && data.columns.length ? data.columns : [{ header: '', highlight: false, items: [{ text: '', type: 'neutral' }] }];
+  const columns = (Array.isArray(data.columns) && data.columns.length
+    ? data.columns
+    : [{ header: '', highlight: false, items: [{ text: '', type: 'neutral' as const }] }]) as Array<{
+    header: string;
+    highlight?: boolean;
+    items: Array<{ text: string; type: 'pro' | 'con' | 'neutral' }>;
+  }>;
   if (!showProperties) {
     return (
       <div className="p-6">
@@ -2612,8 +2619,8 @@ function ComparisonBlock({ block, onUpdate, showProperties }: Omit<ContentBlockP
             <div className="flex items-center justify-between">
               <p className="text-sm font-semibold text-gray-900">Column {colIdx + 1}</p>
               <RowActions
-                onMoveUp={() => onUpdate({ columns: moveItem(columns, colIdx, colIdx - 1) })}
-                onMoveDown={() => onUpdate({ columns: moveItem(columns, colIdx, colIdx + 1) })}
+                onMoveUp={() => onUpdate({ columns: moveItem(columns as any[], colIdx, colIdx - 1) as any })}
+                onMoveDown={() => onUpdate({ columns: moveItem(columns as any[], colIdx, colIdx + 1) as any })}
                 onRemove={() => onUpdate({ columns: columns.filter((_, i) => i !== colIdx) })}
                 canMoveUp={colIdx > 0}
                 canMoveDown={colIdx < columns.length - 1}
@@ -2858,7 +2865,14 @@ function ProcessFlowBlock({ block, onUpdate, showProperties }: Omit<ContentBlock
     title?: string;
     steps?: Array<{ id: string; label: string; type: 'start' | 'process' | 'decision' | 'end'; next?: string[] }>;
   };
-  const steps = Array.isArray(data.steps) && data.steps.length ? data.steps : [{ id: '1', label: '', type: 'start', next: [] }];
+  const steps = (Array.isArray(data.steps) && data.steps.length
+    ? data.steps
+    : [{ id: '1', label: '', type: 'start' as const, next: [] as string[] }]) as Array<{
+    id: string;
+    label: string;
+    type: 'start' | 'process' | 'decision' | 'end';
+    next?: string[];
+  }>;
   if (!showProperties) {
     return (
       <div className="p-6">
@@ -2887,8 +2901,8 @@ function ProcessFlowBlock({ block, onUpdate, showProperties }: Omit<ContentBlock
             <div className="flex items-center justify-between">
               <p className="text-sm font-semibold text-gray-900">Step {idx + 1}</p>
               <RowActions
-                onMoveUp={() => onUpdate({ steps: moveItem(steps, idx, idx - 1) })}
-                onMoveDown={() => onUpdate({ steps: moveItem(steps, idx, idx + 1) })}
+                onMoveUp={() => onUpdate({ steps: moveItem(steps as any[], idx, idx - 1) as any })}
+                onMoveDown={() => onUpdate({ steps: moveItem(steps as any[], idx, idx + 1) as any })}
                 onRemove={() => onUpdate({ steps: steps.filter((_, i) => i !== idx) })}
                 canMoveUp={idx > 0}
                 canMoveDown={idx < steps.length - 1}
