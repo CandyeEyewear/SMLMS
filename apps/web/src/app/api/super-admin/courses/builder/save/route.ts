@@ -86,20 +86,26 @@ export async function POST(request: NextRequest) {
 
     if (courseId) {
       // Update existing course
+      const updatePayload: Record<string, any> = {
+        title: metadata.title,
+        slug: metadata.slug,
+        description: metadata.description || null,
+        thumbnail_url: metadata.thumbnail_url || null,
+        duration_minutes: metadata.duration_minutes || null,
+        category_id: metadata.category_id || null,
+        is_active: metadata.is_active ?? true,
+        is_featured: metadata.is_featured ?? false,
+        updated_at: new Date().toISOString(),
+      };
+
+      // Only include when provided (avoid sending null/undefined into NOT NULL columns).
+      if (typeof metadata.original_prompt === 'string' && metadata.original_prompt.trim()) {
+        updatePayload.original_prompt = metadata.original_prompt;
+      }
+
       const { data: updatedCourse, error: updateError } = await admin
         .from('courses')
-        .update({
-          title: metadata.title,
-          slug: metadata.slug,
-          description: metadata.description || null,
-          thumbnail_url: metadata.thumbnail_url || null,
-          duration_minutes: metadata.duration_minutes || null,
-          category_id: metadata.category_id || null,
-          is_active: metadata.is_active ?? true,
-          is_featured: metadata.is_featured ?? false,
-          original_prompt: metadata.original_prompt,
-          updated_at: new Date().toISOString(),
-        })
+        .update(updatePayload as never)
         .eq('id', courseId)
         .select()
         .single();
@@ -130,19 +136,24 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      const insertPayload: Record<string, any> = {
+        title: metadata.title,
+        slug: generatedSlug,
+        description: metadata.description || null,
+        thumbnail_url: metadata.thumbnail_url || null,
+        duration_minutes: metadata.duration_minutes || null,
+        category_id: metadata.category_id || null,
+        is_active: metadata.is_active ?? true,
+        is_featured: metadata.is_featured ?? false,
+      };
+
+      if (typeof metadata.original_prompt === 'string' && metadata.original_prompt.trim()) {
+        insertPayload.original_prompt = metadata.original_prompt;
+      }
+
       const { data: newCourse, error: createError } = await admin
         .from('courses')
-        .insert({
-          title: metadata.title,
-          slug: generatedSlug,
-          description: metadata.description || null,
-          thumbnail_url: metadata.thumbnail_url || null,
-          duration_minutes: metadata.duration_minutes || null,
-          category_id: metadata.category_id || null,
-          is_active: metadata.is_active ?? true,
-          is_featured: metadata.is_featured ?? false,
-          original_prompt: metadata.original_prompt,
-        })
+        .insert(insertPayload as never)
         .select()
         .single();
 
@@ -232,7 +243,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Error saving course:', error);
     return NextResponse.json(
-      { error: 'Failed to save course' },
+      { error: 'Failed to save course', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }
