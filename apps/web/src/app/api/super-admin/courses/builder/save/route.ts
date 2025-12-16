@@ -2,6 +2,30 @@ import { createClient } from '@/lib/supabase/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 
+function formatUnknownError(err: unknown) {
+  if (err instanceof Error) {
+    return { message: err.message };
+  }
+  if (typeof err === 'string') {
+    return { message: err };
+  }
+  if (err && typeof err === 'object') {
+    const anyErr = err as any;
+    // Supabase/PostgREST errors often look like: { message, details, hint, code }
+    const message =
+      typeof anyErr.message === 'string'
+        ? anyErr.message
+        : typeof anyErr.error === 'string'
+          ? anyErr.error
+          : 'Unknown error';
+    const details = typeof anyErr.details === 'string' ? anyErr.details : undefined;
+    const hint = typeof anyErr.hint === 'string' ? anyErr.hint : undefined;
+    const code = typeof anyErr.code === 'string' ? anyErr.code : undefined;
+    return { message, details, hint, code };
+  }
+  return { message: 'Unknown error' };
+}
+
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
@@ -241,9 +265,10 @@ export async function POST(request: NextRequest) {
       course,
     });
   } catch (error) {
-    console.error('Error saving course:', error);
+    const formatted = formatUnknownError(error);
+    console.error('Error saving course:', formatted, error);
     return NextResponse.json(
-      { error: 'Failed to save course', details: error instanceof Error ? error.message : String(error) },
+      { error: 'Failed to save course', details: formatted },
       { status: 500 }
     );
   }
