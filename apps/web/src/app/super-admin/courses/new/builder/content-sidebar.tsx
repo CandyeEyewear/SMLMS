@@ -97,11 +97,50 @@ export function ContentSidebar({
 }: ContentSidebarProps) {
 
   const [tab, setTab] = useState<'structure' | 'blocks'>('structure');
+  const [promptOpen, setPromptOpen] = useState(false);
+  const [promptKind, setPromptKind] = useState<'module' | 'lesson'>('module');
+  const [promptTargetId, setPromptTargetId] = useState<string>('');
+  const [promptTitle, setPromptTitle] = useState('');
+  const [promptLabel, setPromptLabel] = useState('');
+  const [promptValue, setPromptValue] = useState('');
+  const [promptPlaceholder, setPromptPlaceholder] = useState('');
+
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmTitle, setConfirmTitle] = useState('');
+  const [confirmMessage, setConfirmMessage] = useState('');
+  const [confirmDangerLabel, setConfirmDangerLabel] = useState('Delete');
+  const [confirmOnConfirm, setConfirmOnConfirm] = useState<(() => void) | null>(null);
 
   const lessonCount = useMemo(
     () => modules.reduce((acc, m) => acc + (m.lessons?.length || 0), 0),
     [modules]
   );
+
+  const openRename = (kind: 'module' | 'lesson', id: string, currentTitle: string) => {
+    setPromptKind(kind);
+    setPromptTargetId(id);
+    setPromptTitle(kind === 'module' ? 'Rename module' : 'Rename lesson');
+    setPromptLabel(kind === 'module' ? 'Module title' : 'Lesson title');
+    setPromptPlaceholder(kind === 'module' ? 'e.g., Introduction' : 'e.g., What is Compliance?');
+    setPromptValue(currentTitle || '');
+    setPromptOpen(true);
+  };
+
+  const openDelete = (kind: 'module' | 'lesson', id: string, name: string) => {
+    setConfirmTitle(kind === 'module' ? 'Delete module?' : 'Delete lesson?');
+    setConfirmMessage(
+      kind === 'module'
+        ? `This will delete “${name}” and all of its lessons. This cannot be undone.`
+        : `This will delete “${name}”. This cannot be undone.`
+    );
+    setConfirmDangerLabel(kind === 'module' ? 'Delete module' : 'Delete lesson');
+    setConfirmOnConfirm(() => () => {
+      if (kind === 'module') onDeleteModule(id);
+      else onDeleteLesson(id);
+      setConfirmOpen(false);
+    });
+    setConfirmOpen(true);
+  };
 
   return (
     <div className="w-64 bg-white border-r border-gray-200 overflow-y-auto">
@@ -158,8 +197,7 @@ export function ContentSidebar({
                     <button
                       type="button"
                       onClick={() => {
-                        const nextTitle = window.prompt('Module title', m.title);
-                        if (nextTitle && nextTitle.trim()) onRenameModule(m.id, nextTitle.trim());
+                        openRename('module', m.id, m.title);
                       }}
                       className="text-xs font-semibold text-gray-900 truncate text-left"
                       title="Rename module"
@@ -177,7 +215,7 @@ export function ContentSidebar({
                       </button>
                       <button
                         type="button"
-                        onClick={() => onDeleteModule(m.id)}
+                        onClick={() => openDelete('module', m.id, m.title || `Module ${moduleIndex + 1}`)}
                         className="text-xs text-gray-400 hover:text-red-600"
                         title="Delete module"
                       >
@@ -207,8 +245,7 @@ export function ContentSidebar({
                           <button
                             type="button"
                             onClick={() => {
-                              const nextTitle = window.prompt('Lesson title', l.title);
-                              if (nextTitle && nextTitle.trim()) onRenameLesson(l.id, nextTitle.trim());
+                              openRename('lesson', l.id, l.title);
                             }}
                             className="text-xs text-gray-400 hover:text-gray-600"
                             title="Rename lesson"
@@ -217,7 +254,7 @@ export function ContentSidebar({
                           </button>
                           <button
                             type="button"
-                            onClick={() => onDeleteLesson(l.id)}
+                            onClick={() => openDelete('lesson', l.id, l.title || `Lesson ${lessonIndex + 1}`)}
                             className="text-xs text-gray-400 hover:text-red-600"
                             title="Delete lesson"
                           >
@@ -254,6 +291,110 @@ export function ContentSidebar({
               </div>
             </button>
           ))}
+        </div>
+      )}
+
+      {/* Rename modal */}
+      {promptOpen && (
+        <div className="fixed inset-0 bg-primary-900/35 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">{promptTitle}</h3>
+              <button
+                type="button"
+                onClick={() => setPromptOpen(false)}
+                className="text-gray-400 hover:text-gray-600"
+                aria-label="Close"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-6 space-y-3">
+              <label className="block text-sm font-medium text-gray-700">{promptLabel}</label>
+              <input
+                autoFocus
+                value={promptValue}
+                onChange={(e) => setPromptValue(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-colors"
+                placeholder={promptPlaceholder}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const next = promptValue.trim();
+                    if (!next) return;
+                    if (promptKind === 'module') onRenameModule(promptTargetId, next);
+                    else onRenameLesson(promptTargetId, next);
+                    setPromptOpen(false);
+                  }
+                }}
+              />
+              <p className="text-xs text-gray-500">Tip: keep titles short and scannable.</p>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setPromptOpen(false)}
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const next = promptValue.trim();
+                  if (!next) return;
+                  if (promptKind === 'module') onRenameModule(promptTargetId, next);
+                  else onRenameLesson(promptTargetId, next);
+                  setPromptOpen(false);
+                }}
+                className="px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm delete modal */}
+      {confirmOpen && (
+        <div className="fixed inset-0 bg-primary-900/35 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">{confirmTitle}</h3>
+              <button
+                type="button"
+                onClick={() => setConfirmOpen(false)}
+                className="text-gray-400 hover:text-gray-600"
+                aria-label="Close"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-6">
+              <p className="text-sm text-gray-600">{confirmMessage}</p>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setConfirmOpen(false)}
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => confirmOnConfirm?.()}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+              >
+                {confirmDangerLabel}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

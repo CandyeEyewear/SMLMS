@@ -430,14 +430,8 @@ export function CourseBuilder({ categories, courseId, initialBlocks = [], initia
           onAddLesson={addLesson}
           onRenameModule={renameModule}
           onRenameLesson={renameLesson}
-          onDeleteModule={(moduleId) => {
-            const ok = window.confirm('Delete this module and its lessons?');
-            if (ok) deleteModule(moduleId);
-          }}
-          onDeleteLesson={(lessonId) => {
-            const ok = window.confirm('Delete this lesson?');
-            if (ok) deleteLesson(lessonId);
-          }}
+          onDeleteModule={deleteModule}
+          onDeleteLesson={deleteLesson}
         />
 
         {/* Main Canvas */}
