@@ -681,8 +681,88 @@ interface BlockEditorProps {
 function BlockEditor({ block, onSave, onCancel }: BlockEditorProps) {
   const [content, setContent] = useState<Record<string, unknown>>(block.content);
 
+  // Image editor state
+  const [imageSourceMode, setImageSourceMode] = useState<'ai' | 'url' | 'upload'>('url');
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [aiStyle, setAiStyle] = useState<'illustration' | 'photo' | 'diagram'>('illustration');
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
+
   const updateContent = (key: string, value: unknown) => {
     setContent(prev => ({ ...prev, [key]: value }));
+  };
+
+  // Generate image with DALL-E
+  const handleGenerateImage = async () => {
+    if (!aiPrompt.trim()) {
+      setImageError('Please enter a description for the image');
+      return;
+    }
+
+    setIsGeneratingImage(true);
+    setImageError(null);
+
+    try {
+      const response = await fetch('/api/super-admin/ai/generate-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: aiPrompt,
+          style: aiStyle,
+          size: '1024x1024',
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to generate image');
+      }
+
+      // Update content with generated image
+      updateContent('url', data.image.url);
+      updateContent('alt', aiPrompt);
+      updateContent('generatedWith', 'dalle');
+      updateContent('revisedPrompt', data.image.revisedPrompt);
+
+      setAiPrompt('');
+    } catch (err) {
+      setImageError(err instanceof Error ? err.message : 'Failed to generate image');
+    } finally {
+      setIsGeneratingImage(false);
+    }
+  };
+
+  // Handle file upload
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setImageError('Please select an image file');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setImageError('Image must be less than 5MB');
+      return;
+    }
+
+    setImageError(null);
+
+    // For now, create a local preview URL
+    // In production, you'd upload to Supabase Storage here
+    const previewUrl = URL.createObjectURL(file);
+    updateContent('url', previewUrl);
+    updateContent('alt', file.name.replace(/\.[^/.]+$/, ''));
+    updateContent('uploadedFile', file.name);
+
+    // TODO: Implement actual file upload to Supabase Storage
+    // const { data, error } = await supabase.storage
+    //   .from('course-images')
+    //   .upload(`lessons/${Date.now()}-${file.name}`, file);
   };
 
   const renderEditor = () => {
@@ -1475,40 +1555,211 @@ function BlockEditor({ block, onSave, onCancel }: BlockEditorProps) {
       case 'image':
         return (
           <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Image URL</label>
-              <input
-                type="url"
-                value={(content.url as string) || ''}
-                onChange={(e) => updateContent('url', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                placeholder="https://example.com/image.jpg"
-              />
+            {/* Source Mode Tabs */}
+            <div className="flex border-b border-gray-200">
+              <button
+                onClick={() => setImageSourceMode('ai')}
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  imageSourceMode === 'ai'
+                    ? 'border-primary-500 text-primary-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <span className="flex items-center gap-2">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                  </svg>
+                  AI Generate
+                </span>
+              </button>
+              <button
+                onClick={() => setImageSourceMode('url')}
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  imageSourceMode === 'url'
+                    ? 'border-primary-500 text-primary-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <span className="flex items-center gap-2">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                  </svg>
+                  URL
+                </span>
+              </button>
+              <button
+                onClick={() => setImageSourceMode('upload')}
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  imageSourceMode === 'upload'
+                    ? 'border-primary-500 text-primary-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <span className="flex items-center gap-2">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                  </svg>
+                  Upload
+                </span>
+              </button>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Alt Text</label>
-              <input
-                type="text"
-                value={(content.alt as string) || ''}
-                onChange={(e) => updateContent('alt', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                placeholder="Describe the image..."
-              />
+
+            {/* Error Display */}
+            {imageError && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                {imageError}
+              </div>
+            )}
+
+            {/* AI Generate Mode */}
+            {imageSourceMode === 'ai' && (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Describe the image you want</label>
+                  <textarea
+                    value={aiPrompt}
+                    onChange={(e) => setAiPrompt(e.target.value)}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                    placeholder="A professional illustration showing a team collaborating on a project..."
+                    disabled={isGeneratingImage}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Style</label>
+                  <div className="flex gap-2">
+                    {(['illustration', 'photo', 'diagram'] as const).map((style) => (
+                      <button
+                        key={style}
+                        onClick={() => setAiStyle(style)}
+                        disabled={isGeneratingImage}
+                        className={`px-4 py-2 text-sm rounded-lg border transition-colors ${
+                          aiStyle === style
+                            ? 'bg-primary-50 border-primary-300 text-primary-700'
+                            : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                        }`}
+                      >
+                        {style.charAt(0).toUpperCase() + style.slice(1)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <button
+                  onClick={handleGenerateImage}
+                  disabled={isGeneratingImage || !aiPrompt.trim()}
+                  className="w-full px-4 py-3 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-lg hover:from-purple-600 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium flex items-center justify-center gap-2"
+                >
+                  {isGeneratingImage ? (
+                    <>
+                      <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      Generating with DALL-E...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                      </svg>
+                      Generate Image
+                    </>
+                  )}
+                </button>
+                <p className="text-xs text-gray-500 text-center">
+                  Powered by DALL-E 3. Images are generated based on your description.
+                </p>
+              </div>
+            )}
+
+            {/* URL Mode */}
+            {imageSourceMode === 'url' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Image URL</label>
+                <input
+                  type="url"
+                  value={(content.url as string) || ''}
+                  onChange={(e) => updateContent('url', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                  placeholder="https://example.com/image.jpg"
+                />
+              </div>
+            )}
+
+            {/* Upload Mode */}
+            {imageSourceMode === 'upload' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Upload Image</label>
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-primary-400 transition-colors">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                    id="image-upload"
+                  />
+                  <label htmlFor="image-upload" className="cursor-pointer">
+                    <svg className="w-12 h-12 mx-auto text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <p className="text-sm text-gray-600 mb-1">Click to upload an image</p>
+                    <p className="text-xs text-gray-500">PNG, JPG, GIF up to 5MB</p>
+                  </label>
+                </div>
+                {(content.uploadedFile as string) && (
+                  <p className="mt-2 text-sm text-gray-600">
+                    Uploaded: {content.uploadedFile as string}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Common fields - Alt and Caption */}
+            <div className="pt-4 border-t border-gray-200 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Alt Text</label>
+                <input
+                  type="text"
+                  value={(content.alt as string) || ''}
+                  onChange={(e) => updateContent('alt', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                  placeholder="Describe the image for accessibility..."
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Caption (optional)</label>
+                <input
+                  type="text"
+                  value={(content.caption as string) || ''}
+                  onChange={(e) => updateContent('caption', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                  placeholder="Image caption..."
+                />
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Caption (optional)</label>
-              <input
-                type="text"
-                value={(content.caption as string) || ''}
-                onChange={(e) => updateContent('caption', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                placeholder="Image caption..."
-              />
-            </div>
+
+            {/* Preview */}
             {(content.url as string) && (
               <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                <p className="text-sm text-gray-500 mb-2">Preview:</p>
-                <img src={content.url as string} alt={(content.alt as string) || ''} className="max-w-full h-auto rounded" />
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm text-gray-500">Preview:</p>
+                  {(content.generatedWith as string) === 'dalle' && (
+                    <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">
+                      AI Generated
+                    </span>
+                  )}
+                </div>
+                <img
+                  src={content.url as string}
+                  alt={(content.alt as string) || ''}
+                  className="max-w-full h-auto rounded shadow-sm"
+                  onError={() => setImageError('Failed to load image preview')}
+                />
+                {(content.revisedPrompt as string) && (
+                  <p className="mt-2 text-xs text-gray-500 italic">
+                    DALL-E interpreted: {content.revisedPrompt as string}
+                  </p>
+                )}
               </div>
             )}
           </div>
