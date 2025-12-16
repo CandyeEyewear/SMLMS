@@ -54,6 +54,10 @@ async function generateWithDalle(
     response_format: 'url',
   });
 
+  if (!response.data || response.data.length === 0) {
+    throw new Error('No image data returned from DALL-E');
+  }
+
   const imageData = response.data[0];
 
   if (!imageData?.url) {
@@ -71,8 +75,8 @@ async function generateWithDalle(
  * Generate image using Flux (placeholder for future implementation)
  */
 async function generateWithFlux(
-  prompt: string,
-  options: GenerateImageOptions
+  _prompt: string,
+  _options: GenerateImageOptions
 ): Promise<GeneratedImage> {
   // Flux integration placeholder
   // Can be implemented with Replicate API or Black Forest Labs API
