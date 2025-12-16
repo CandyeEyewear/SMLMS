@@ -35,6 +35,7 @@ export default function NewCategoryPage() {
       const res = await fetch('/api/super-admin/categories/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           name,
           slug,
@@ -43,9 +44,11 @@ export default function NewCategoryPage() {
         }),
       });
 
-      const data = await res.json();
+      const contentType = res.headers.get('content-type') || '';
+      const data = contentType.includes('application/json') ? await res.json().catch(() => null) : null;
+
       if (!res.ok) {
-        throw new Error(data?.error || 'Failed to create category');
+        throw new Error(data?.error || `Failed to create category (HTTP ${res.status})`);
       }
 
       router.push('/super-admin/categories');

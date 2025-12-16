@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
 
     // Get current state
     const { data: category } = await supabase
-      .from('course_categories' as never)
+      .from('categories' as never)
       .select('is_active')
       .eq('id' as never, categoryId as never)
       .single();
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
 
     // Toggle the active state
     const { error: updateError } = await supabase
-      .from('course_categories' as never)
+      .from('categories' as never)
       .update({
         is_active: !(category as { is_active: boolean }).is_active,
         updated_at: new Date().toISOString(),

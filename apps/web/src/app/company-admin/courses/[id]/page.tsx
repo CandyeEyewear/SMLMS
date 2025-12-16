@@ -90,7 +90,7 @@ export default async function CourseAssignmentPage({
       thumbnail_url,
       duration_minutes,
       is_active,
-      category:course_categories(id, name)
+      category:categories(id, name)
     `)
     .eq('id', courseId)
     .single();

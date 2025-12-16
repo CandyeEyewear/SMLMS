@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { redirect, notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
+import { PublishActions } from './publish-actions';
 
 type CourseType = {
   id: string;
@@ -13,6 +14,8 @@ type CourseType = {
   duration_minutes: number | null;
   is_active: boolean;
   is_featured: boolean;
+  is_published: boolean;
+  published_at: string | null;
   created_at: string;
   updated_at: string;
   category: { id: string; name: string } | null;
@@ -58,9 +61,11 @@ export default async function CourseDetailPage({
       duration_minutes,
       is_active,
       is_featured,
+      is_published,
+      published_at,
       created_at,
       updated_at,
-      category:course_categories(id, name)
+      category:categories(id, name)
     `)
     .eq('id', id)
     .single();
@@ -140,10 +145,11 @@ export default async function CourseDetailPage({
             </Link>
             <Link
               href={`/super-admin/courses/${id}/edit`}
-              className="px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors font-medium"
+              className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
             >
               Edit Course
             </Link>
+            <PublishActions courseId={id} isPublished={typedCourse.is_published} />
           </div>
         </div>
       </div>

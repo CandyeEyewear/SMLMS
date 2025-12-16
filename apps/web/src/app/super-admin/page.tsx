@@ -44,7 +44,7 @@ export default async function SuperAdminDashboard() {
       .select('id')
       .is('deleted_at', null),
     supabaseAdmin
-      .from('course_categories')
+      .from('categories')
       .select('id')
   ]);
 

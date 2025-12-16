@@ -59,7 +59,7 @@ export default async function CoursesPage() {
       is_active,
       is_featured,
       created_at,
-      category:course_categories(id, name)
+      category:categories(id, name)
     `)
     .order('created_at', { ascending: false });
 
@@ -67,7 +67,7 @@ export default async function CoursesPage() {
 
   // Fetch categories for filtering
   const { data: categoriesData } = await supabase
-    .from('course_categories' as never)
+    .from('categories' as never)
     .select('id, name')
     .order('name');
 

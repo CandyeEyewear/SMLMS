@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
 
     // Delete the category
     const { error: deleteError } = await supabase
-      .from('course_categories' as never)
+      .from('categories' as never)
       .delete()
       .eq('id' as never, categoryId as never);
 

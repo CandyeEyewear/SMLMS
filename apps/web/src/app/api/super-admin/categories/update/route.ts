@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
 
     // Check if slug already exists for another category
     const { data: existingCategory } = await supabase
-      .from('course_categories' as never)
+      .from('categories' as never)
       .select('id')
       .eq('slug' as never, slug as never)
       .neq('id' as never, id as never)
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
 
     // Update the category
     const { data: category, error: updateError } = await supabase
-      .from('course_categories' as never)
+      .from('categories' as never)
       .update({
         name,
         description,

@@ -27,7 +27,7 @@ export default async function EditCategoryPage({
   }
 
   const { data: category, error } = await supabase
-    .from('course_categories' as never)
+    .from('categories' as never)
     .select('id, name, slug, description, icon' as never)
     .eq('id' as never, id as never)
     .single() as unknown as {

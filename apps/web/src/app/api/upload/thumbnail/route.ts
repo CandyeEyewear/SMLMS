@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
@@ -58,8 +59,22 @@ export async function POST(request: NextRequest) {
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!supabaseUrl || !serviceRoleKey) {
+      return NextResponse.json(
+        { error: 'Server misconfigured: missing SUPABASE_SERVICE_ROLE_KEY or NEXT_PUBLIC_SUPABASE_URL' },
+        { status: 500 }
+      );
+    }
+
+    // Use service role for storage upload (bypasses Storage RLS). Route is still protected by role checks above.
+    const admin = createAdminClient(supabaseUrl, serviceRoleKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+
     // Upload to Supabase Storage
-    const { data: uploadData, error: uploadError } = await supabase.storage
+    const { error: uploadError } = await admin.storage
       .from('course-thumbnails')
       .upload(filePath, buffer, {
         contentType: file.type,
@@ -75,7 +90,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get public URL
-    const { data: urlData } = supabase.storage
+    const { data: urlData } = admin.storage
       .from('course-thumbnails')
       .getPublicUrl(filePath);
 

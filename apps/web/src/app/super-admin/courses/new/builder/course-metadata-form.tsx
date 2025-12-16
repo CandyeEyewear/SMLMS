@@ -12,6 +12,7 @@ interface CourseMetadataFormProps {
 
 export function CourseMetadataForm({ metadata, categories, onUpdate, onClose }: CourseMetadataFormProps) {
   const [formData, setFormData] = useState(metadata);
+  const [slugEdited, setSlugEdited] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -70,10 +71,17 @@ export function CourseMetadataForm({ metadata, categories, onUpdate, onClose }: 
   };
 
   const handleTitleChange = (value: string) => {
-    handleChange('title', value);
-    if (!formData.slug || formData.slug === generateSlug(metadata.title)) {
-      handleChange('slug', generateSlug(value));
-    }
+    setFormData((prev: CourseMetadata) => {
+      const next: CourseMetadata = { ...prev, title: value };
+
+      // Auto-generate slug until user edits the slug manually.
+      // Also keep it in sync if it still matches the previous title-derived slug.
+      if (!slugEdited || !prev.slug || prev.slug === generateSlug(prev.title || '')) {
+        next.slug = generateSlug(value);
+      }
+
+      return next;
+    });
   };
 
   const handleSave = () => {
@@ -82,7 +90,7 @@ export function CourseMetadataForm({ metadata, categories, onUpdate, onClose }: 
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-primary-900/35 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center justify-between">
@@ -126,7 +134,10 @@ export function CourseMetadataForm({ metadata, categories, onUpdate, onClose }: 
             <input
               type="text"
               value={formData.slug}
-              onChange={(e) => handleChange('slug', e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+              onChange={(e) => {
+                setSlugEdited(true);
+                handleChange('slug', e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''));
+              }}
               required
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-colors"
               placeholder="workplace-safety-fundamentals"

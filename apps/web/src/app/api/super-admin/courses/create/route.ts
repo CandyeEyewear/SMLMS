@@ -75,7 +75,6 @@ export async function POST(request: NextRequest) {
         is_active: is_active ?? true,
         is_featured: is_featured ?? false,
         original_prompt,
-        created_by: user.id,
       })
       .select()
       .single();
