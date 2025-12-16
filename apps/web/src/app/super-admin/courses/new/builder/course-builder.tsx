@@ -12,7 +12,64 @@ import { CourseMetadataForm } from './course-metadata-form';
 
 export type ContentBlockType = {
   id: string;
-  type: 'video' | 'image' | 'text' | 'quiz' | 'file' | 'embed';
+  // NOTE: Keep this aligned with Project guide/CONTENT_BLOCKS_REFERENCE.md
+  // Also keep legacy types ('quiz', 'file') for backward compatibility with older builder content.
+  type:
+    // Text & Basic
+    | 'text'
+    | 'heading'
+    | 'quote'
+    | 'divider'
+    // Lists & Steps
+    | 'bullet_list'
+    | 'numbered_list'
+    | 'numbered_steps'
+    | 'checklist'
+    // Media
+    | 'image'
+    | 'image_gallery'
+    | 'video'
+    | 'audio'
+    | 'file_download'
+    | 'embed'
+    // Interactive
+    | 'accordion'
+    | 'tabs'
+    | 'flashcard'
+    | 'flashcard_deck'
+    | 'hotspot_image'
+    | 'slider'
+    | 'reveal'
+    // Data & Comparison
+    | 'table'
+    | 'comparison'
+    | 'timeline'
+    | 'process_flow'
+    | 'stats'
+    // Callouts
+    | 'callout'
+    | 'highlight_box'
+    // Reference
+    | 'glossary'
+    | 'definition'
+    | 'code'
+    | 'formula'
+    | 'citation'
+    // Engagement
+    | 'knowledge_check'
+    | 'reflection'
+    | 'poll'
+    | 'discussion'
+    | 'scenario'
+    | 'drag_drop'
+    // Layout
+    | 'two_column'
+    | 'three_column'
+    | 'card_grid'
+    | 'spacer'
+    // Legacy
+    | 'quiz'
+    | 'file';
   data: any;
   order: number;
 };
