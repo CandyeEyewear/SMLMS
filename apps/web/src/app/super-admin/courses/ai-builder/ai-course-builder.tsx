@@ -4,6 +4,13 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
+function generateSlug(text: string) {
+  return (text || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+}
+
 interface AICourseBuilderProps {
   categories: { id: string; name: string }[];
 }
@@ -42,12 +49,30 @@ export function AICourseBuilder({ categories }: AICourseBuilderProps) {
   const [outline, setOutline] = useState<Outline | null>(null);
   const [selectedCategory, setSelectedCategory] = useState('');
 
+  // Course metadata (mirrors the manual creation fields)
+  const [courseTitle, setCourseTitle] = useState('');
+  const [courseSlug, setCourseSlug] = useState('');
+  const [courseDescription, setCourseDescription] = useState('');
+  const [durationMinutes, setDurationMinutes] = useState<string>('');
+  const [isActive, setIsActive] = useState(true);
+  const [isFeatured, setIsFeatured] = useState(false);
+
   function safeUuid() {
     if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
       return (crypto as any).randomUUID();
     }
     return `00000000-0000-4000-8000-${Math.random().toString(16).slice(2).padEnd(12, '0').slice(0, 12)}`;
   }
+
+  const handleCourseTitleChange = (value: string) => {
+    const prevGenerated = generateSlug(courseTitle);
+    const nextGenerated = generateSlug(value);
+    setCourseTitle(value);
+    // Keep slug auto-updating unless the user changed it manually.
+    if (!courseSlug || courseSlug === prevGenerated) {
+      setCourseSlug(nextGenerated);
+    }
+  };
 
   const handleGenerateOutline = async () => {
     if (!topic.trim()) {
@@ -81,7 +106,15 @@ export function AICourseBuilder({ categories }: AICourseBuilderProps) {
       }
 
       const data = await response.json();
-      setOutline(data.outline);
+      const nextOutline = data.outline as Outline;
+      setOutline(nextOutline);
+      // Initialize course metadata from the generated outline so slug/duration/flags can be edited.
+      setCourseTitle(nextOutline?.title || topic);
+      setCourseSlug(generateSlug(nextOutline?.title || topic));
+      setCourseDescription(nextOutline?.description || '');
+      setDurationMinutes('');
+      setIsActive(true);
+      setIsFeatured(false);
       setStep('outline');
     } catch (err: any) {
       setError(err.message || 'Failed to generate course outline');
@@ -93,6 +126,10 @@ export function AICourseBuilder({ categories }: AICourseBuilderProps) {
   const handleCreateCourse = async () => {
     if (!outline || !selectedCategory) {
       setError('Please select a category');
+      return;
+    }
+    if (!courseTitle.trim()) {
+      setError('Please enter a course title');
       return;
     }
 
@@ -137,11 +174,13 @@ export function AICourseBuilder({ categories }: AICourseBuilderProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           metadata: {
-            title: outline.title,
-            description: outline.description,
+            title: courseTitle,
+            slug: courseSlug || undefined,
+            description: courseDescription || undefined,
             category_id: selectedCategory,
-            is_active: true,
-            is_featured: false,
+            duration_minutes: durationMinutes ? parseInt(durationMinutes, 10) : null,
+            is_active: isActive,
+            is_featured: isFeatured,
             original_prompt: topic,
           },
           modules,
@@ -364,8 +403,86 @@ export function AICourseBuilder({ categories }: AICourseBuilderProps) {
         )}
 
         <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <h2 className="text-2xl font-semibold text-gray-900 mb-2">{outline.title}</h2>
-          <p className="text-gray-600 mb-6">{outline.description}</p>
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Course settings</h2>
+
+          <div className="space-y-4 mb-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Title <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={courseTitle}
+                onChange={(e) => handleCourseTitleChange(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                disabled={loading}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Slug <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={courseSlug}
+                onChange={(e) => setCourseSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                disabled={loading}
+                placeholder="my-course-slug"
+              />
+              <p className="text-xs text-gray-500 mt-1">URL-friendly identifier for the course.</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+              <textarea
+                value={courseDescription}
+                onChange={(e) => setCourseDescription(e.target.value)}
+                rows={3}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                disabled={loading}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Duration (minutes)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={durationMinutes}
+                  onChange={(e) => setDurationMinutes(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  disabled={loading}
+                  placeholder="e.g., 60"
+                />
+              </div>
+
+              <div className="flex items-end gap-6 pb-1">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isActive}
+                    onChange={(e) => setIsActive(e.target.checked)}
+                    className="w-4 h-4 text-primary-500 border-gray-300 rounded focus:ring-primary-500"
+                    disabled={loading}
+                  />
+                  <span className="text-sm text-gray-700">Active</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isFeatured}
+                    onChange={(e) => setIsFeatured(e.target.checked)}
+                    className="w-4 h-4 text-accent-500 border-gray-300 rounded focus:ring-accent-500"
+                    disabled={loading}
+                  />
+                  <span className="text-sm text-gray-700">Featured</span>
+                </label>
+              </div>
+            </div>
+          </div>
 
           <div className="space-y-6">
             {outline.modules.map((module, moduleIndex) => (
