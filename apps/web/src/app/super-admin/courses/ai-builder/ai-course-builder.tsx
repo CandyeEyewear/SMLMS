@@ -350,6 +350,35 @@ function BlockPreview({ block }: { block: ContentBlock }) {
 }
 
 // ============================================================================
+// MEDIA SUGGESTION COMPONENT
+// ============================================================================
+
+function MediaSuggestionCard({ suggestion }: { suggestion: { type: string; description: string; placement: string } }) {
+  return (
+    <div className="p-3 bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-lg">
+      <div className="flex items-start gap-3">
+        <div className="flex-shrink-0 w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+          {suggestion.type === 'image' && <span className="text-lg">🖼️</span>}
+          {suggestion.type === 'video' && <span className="text-lg">🎬</span>}
+          {suggestion.type === 'diagram' && <span className="text-lg">📊</span>}
+          {!['image', 'video', 'diagram'].includes(suggestion.type) && <span className="text-lg">📎</span>}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-xs font-medium text-purple-700 uppercase">{suggestion.type} Suggestion</span>
+            <span className="text-xs text-purple-500">{suggestion.placement}</span>
+          </div>
+          <p className="text-sm text-gray-700">{suggestion.description}</p>
+        </div>
+        <button className="flex-shrink-0 px-3 py-1.5 text-xs font-medium text-purple-600 bg-white border border-purple-200 rounded-lg hover:bg-purple-50 transition-colors">
+          Generate Image
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
 // QUIZ QUESTION PREVIEW COMPONENT
 // ============================================================================
 
@@ -1490,6 +1519,21 @@ export function AICourseBuilder({ categories }: AICourseBuilderProps) {
                                 ))
                               ) : (
                                 <p className="text-sm text-gray-500 italic">No content generated yet</p>
+                              )}
+
+                              {/* Media Suggestions */}
+                              {lesson.suggestedMedia && lesson.suggestedMedia.length > 0 && (
+                                <div className="mt-4 pt-4 border-t border-gray-200">
+                                  <h5 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+                                    <span>🎨</span>
+                                    AI-Suggested Media ({lesson.suggestedMedia.length})
+                                  </h5>
+                                  <div className="space-y-2">
+                                    {lesson.suggestedMedia.map((suggestion, sugIdx) => (
+                                      <MediaSuggestionCard key={sugIdx} suggestion={suggestion} />
+                                    ))}
+                                  </div>
+                                </div>
                               )}
                             </div>
                           )}
