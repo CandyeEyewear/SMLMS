@@ -61,8 +61,8 @@ export default function SetupPasswordPage() {
           router.push('/learner');
         }
       }
-    } catch {
-      setError('An error occurred. Please try again.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred. Please try again.');
       setLoading(false);
     }
   };

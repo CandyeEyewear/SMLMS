@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { AssignToCompaniesModal } from './assign-to-companies-modal';
@@ -18,17 +19,69 @@ export function CourseActions({ courseId, courseName, isActive, hasEnrollments }
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
   const router = useRouter();
+
+  const updateMenuPosition = () => {
+    const buttonEl = buttonRef.current;
+    const menuEl = menuRef.current;
+    if (!buttonEl || !menuEl) return;
+
+    const rect = buttonEl.getBoundingClientRect();
+    const menuWidth = menuEl.offsetWidth || 0;
+    const menuHeight = menuEl.offsetHeight || 0;
+
+    const padding = 8;
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    // Prefer below-right aligned with the trigger
+    let top = rect.bottom + padding;
+    let left = rect.right - menuWidth;
+
+    // Clamp horizontally into viewport
+    left = Math.min(Math.max(left, padding), Math.max(padding, viewportWidth - menuWidth - padding));
+
+    // If it would go off-screen, flip above
+    if (top + menuHeight > viewportHeight - padding) {
+      top = rect.top - menuHeight - padding;
+    }
+    top = Math.min(Math.max(top, padding), Math.max(padding, viewportHeight - menuHeight - padding));
+
+    setMenuPosition({ top, left });
+  };
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      const clickedInTrigger = dropdownRef.current?.contains(target);
+      const clickedInMenu = menuRef.current?.contains(target);
+      if (!clickedInTrigger && !clickedInMenu) {
         setIsOpen(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    // Position after it mounts
+    const raf = requestAnimationFrame(updateMenuPosition);
+
+    // Reposition on scroll/resize (capture scroll to catch nested scrollers)
+    window.addEventListener('resize', updateMenuPosition);
+    window.addEventListener('scroll', updateMenuPosition, true);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('resize', updateMenuPosition);
+      window.removeEventListener('scroll', updateMenuPosition, true);
+    };
+  }, [isOpen]);
 
   const handleToggleActive = async () => {
     setLoading(true);
@@ -52,6 +105,72 @@ export function CourseActions({ courseId, courseName, isActive, hasEnrollments }
       setLoading(false);
     }
   };
+
+  const menu =
+    isOpen && typeof document !== 'undefined'
+      ? createPortal(
+          <div
+            ref={menuRef}
+            style={{ top: menuPosition.top, left: menuPosition.left }}
+            className="fixed w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-[1000] max-h-[70vh] overflow-y-auto"
+            role="menu"
+            aria-label="Course actions"
+          >
+            <Link
+              href={`/super-admin/courses/${courseId}`}
+              className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+            >
+              View Details
+            </Link>
+            <Link
+              href={`/super-admin/courses/${courseId}/edit`}
+              className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+            >
+              Edit Course
+            </Link>
+            <Link
+              href={`/super-admin/courses/${courseId}/modules`}
+              className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+            >
+              Manage Modules
+            </Link>
+            <hr className="my-1" />
+            <button
+              onClick={() => {
+                setShowAssignModal(true);
+                setIsOpen(false);
+              }}
+              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              role="menuitem"
+            >
+              Assign to Companies
+            </button>
+            <hr className="my-1" />
+            <button
+              onClick={handleToggleActive}
+              disabled={loading}
+              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+              role="menuitem"
+            >
+              {isActive ? 'Deactivate' : 'Activate'} Course
+            </button>
+            {!hasEnrollments ? (
+              <button
+                onClick={() => setShowConfirm(true)}
+                className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                role="menuitem"
+              >
+                Delete Course
+              </button>
+            ) : (
+              <div className="px-4 py-2 text-sm text-gray-400" role="menuitem">
+                Cannot delete (has enrollments)
+              </div>
+            )}
+          </div>,
+          document.body
+        )
+      : null;
 
   const handleDelete = async () => {
     setLoading(true);
@@ -80,66 +199,18 @@ export function CourseActions({ courseId, courseName, isActive, hasEnrollments }
   return (
     <div className="relative" ref={dropdownRef}>
       <button
+        ref={buttonRef}
         onClick={() => setIsOpen(!isOpen)}
         className="text-gray-400 hover:text-gray-600 p-1"
+        aria-haspopup="menu"
+        aria-expanded={isOpen}
       >
         <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
           <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
         </svg>
       </button>
 
-      {isOpen && (
-        <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10">
-          <Link
-            href={`/super-admin/courses/${courseId}`}
-            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-          >
-            View Details
-          </Link>
-          <Link
-            href={`/super-admin/courses/${courseId}/edit`}
-            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-          >
-            Edit Course
-          </Link>
-          <Link
-            href={`/super-admin/courses/${courseId}/modules`}
-            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-          >
-            Manage Modules
-          </Link>
-          <hr className="my-1" />
-          <button
-            onClick={() => {
-              setShowAssignModal(true);
-              setIsOpen(false);
-            }}
-            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-          >
-            Assign to Companies
-          </button>
-          <hr className="my-1" />
-          <button
-            onClick={handleToggleActive}
-            disabled={loading}
-            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50"
-          >
-            {isActive ? 'Deactivate' : 'Activate'} Course
-          </button>
-          {!hasEnrollments ? (
-            <button
-              onClick={() => setShowConfirm(true)}
-              className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-            >
-              Delete Course
-            </button>
-          ) : (
-            <div className="px-4 py-2 text-sm text-gray-400">
-              Cannot delete (has enrollments)
-            </div>
-          )}
-        </div>
-      )}
+      {menu}
 
       {showConfirm && (
         <div className="fixed inset-0 bg-primary-900/35 backdrop-blur-sm flex items-center justify-center z-50">

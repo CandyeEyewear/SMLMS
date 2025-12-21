@@ -10,7 +10,13 @@ export default function AuthCallbackPage() {
 
   useEffect(() => {
     const handleCallback = async () => {
-      const supabase = createClient();
+      let supabase: ReturnType<typeof createClient>;
+      try {
+        supabase = createClient();
+      } catch (err) {
+        setStatus(err instanceof Error ? err.message : 'Supabase is not configured.');
+        return;
+      }
 
       // Get the hash fragment from URL
       const hashParams = new URLSearchParams(window.location.hash.substring(1));

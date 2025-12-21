@@ -33,7 +33,14 @@ export default function NewCompanyPage() {
     setError('');
     setLoading(true);
 
-    const supabase = createClient();
+    let supabase: ReturnType<typeof createClient>;
+    try {
+      supabase = createClient();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Supabase is not configured.');
+      setLoading(false);
+      return;
+    }
 
     // Check if slug is unique
     const { data: existing } = await supabase
