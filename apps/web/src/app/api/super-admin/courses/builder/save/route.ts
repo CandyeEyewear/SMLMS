@@ -47,6 +47,33 @@ function maybeStripMissingColumn(payload: Record<string, any>, err: unknown) {
   return { payload, stripped: null as string | null };
 }
 
+function maybeStripMissingColumnForTable<T extends Record<string, any>>(
+  rows: T[],
+  err: unknown,
+  table: string
+) {
+  const formatted = formatUnknownError(err);
+  if (formatted.code !== 'PGRST204' || typeof formatted.message !== 'string') {
+    return { rows, stripped: null as string | null };
+  }
+
+  const re = new RegExp(`Could not find the '([^']+)' column of '${table}'`);
+  const match = formatted.message.match(re);
+  const column = match?.[1];
+  if (!column) return { rows, stripped: null as string | null };
+
+  let changed = false;
+  const nextRows = rows.map((r) => {
+    if (!Object.prototype.hasOwnProperty.call(r, column)) return r;
+    changed = true;
+    const next = { ...r };
+    delete (next as any)[column];
+    return next;
+  });
+
+  return { rows: nextRows, stripped: changed ? column : null };
+}
+
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
@@ -281,26 +308,35 @@ export async function POST(request: NextRequest) {
         module_id: m.id,
         title: l.title || `Lesson ${li + 1}`,
         description: l.description || null,
-        content_type: 'interactive',
         content: l.content || { blocks: [] },
         duration_minutes: l.duration_minutes ?? 0,
         sort_order: l.sort_order ?? li,
-        is_preview: false,
         is_published: false,
         updated_at: new Date().toISOString(),
       }))
     );
 
-    const { error: upsertLessonsError } = await admin
-      .from('lessons')
-      .upsert(lessonRows as never, { onConflict: 'id' } as never);
+    let lessonsToUpsert = lessonRows as any[];
+    let upsertLessonsError: any = null;
+    // Retry a few times by stripping missing columns (schema cache can lag migrations).
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const res = await admin
+        .from('lessons')
+        .upsert(lessonsToUpsert as never, { onConflict: 'id' } as never);
+      upsertLessonsError = res.error;
+      if (!upsertLessonsError) break;
+
+      const stripped = maybeStripMissingColumnForTable(lessonsToUpsert, upsertLessonsError, 'lessons');
+      if (!stripped.stripped) break;
+      lessonsToUpsert = stripped.rows;
+    }
 
     if (upsertLessonsError) {
       console.error('Error saving lessons:', upsertLessonsError);
       return NextResponse.json({ error: 'Failed to save lessons', details: upsertLessonsError.message }, { status: 500 });
     }
 
-    const lessonIds = lessonRows.map((l) => l.id);
+    const lessonIds = (lessonsToUpsert || []).map((l) => l.id);
 
     // Delete removed lessons within remaining modules
     if (moduleIds.length > 0 && lessonIds.length > 0) {
