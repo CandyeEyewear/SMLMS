@@ -1,13 +1,25 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
+function missingEnvError() {
+  return new Error(
+    [
+      'Missing required environment variables: NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY.',
+      '',
+      'Fix:',
+      '- Local dev: create `apps/web/.env.local` (copy from `apps/web/.env.example`) and set both values.',
+      '- Deployment: set both variables in your hosting provider, then redeploy.',
+    ].join('\n')
+  );
+}
+
 export async function createClient() {
   const cookieStore = await cookies();
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error('Missing required environment variables: NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY');
+    throw missingEnvError();
   }
 
   return createServerClient(supabaseUrl, supabaseAnonKey,

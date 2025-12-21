@@ -38,7 +38,14 @@ export default function EditCompanyForm({ company }: { company: Company }) {
     setSuccess('');
     setLoading(true);
 
-    const supabase = createClient();
+    let supabase: ReturnType<typeof createClient>;
+    try {
+      supabase = createClient();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Supabase is not configured.');
+      setLoading(false);
+      return;
+    }
 
     // Check if slug is unique (if changed)
     if (slug !== company.slug) {

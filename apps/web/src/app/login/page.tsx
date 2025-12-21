@@ -22,7 +22,14 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
 
-    const supabase = createClient();
+    let supabase: ReturnType<typeof createClient>;
+    try {
+      supabase = createClient();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Supabase is not configured.');
+      setLoading(false);
+      return;
+    }
 
     const { data, error: authError } = await supabase.auth.signInWithPassword({
       email,
@@ -78,7 +85,14 @@ export default function LoginPage() {
     setError('');
     setResetLoading(true);
 
-    const supabase = createClient();
+    let supabase: ReturnType<typeof createClient>;
+    try {
+      supabase = createClient();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Supabase is not configured.');
+      setResetLoading(false);
+      return;
+    }
 
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(resetEmail, {
       redirectTo: `${window.location.origin}/auth/setup-password`,
